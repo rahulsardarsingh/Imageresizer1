@@ -1,0 +1,2710 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Resizer By Rahul — Developed by Rahul Sardar Singh</title>
+    <!-- Tailwind CSS with Dark Mode class strategy -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Cropper.js CSS & JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- PDF.js Library (v3.11.174) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- JSZip Library for Batch ZIP Downloads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Checkered background for transparent images */
+        .bg-checkerboard {
+            background-color: #ffffff;
+            background-image: 
+                linear-gradient(45deg, #e2e8f0 25%, transparent 25%), 
+                linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #e2e8f0 75%), 
+                linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        .dark .bg-checkerboard {
+            background-color: #0f172a;
+            background-image: 
+                linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+                linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+        }
+        /* Custom range slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #cbd5e1;
+            height: 0.5rem;
+            border-radius: 9999px;
+        }
+        .dark input[type="range"]::-webkit-slider-runnable-track {
+            background: #334155;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -4px;
+            background-color: #4f46e5;
+            height: 1.25rem;
+            width: 1.25rem;
+            border-radius: 9999px;
+            border: 2px solid #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            transition: transform 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        .cropper-Wrapper {
+            max-height: 450px;
+            width: 100%;
+            overflow: hidden;
+        }
+        /* Custom subtle scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200 selection:bg-indigo-500 selection:text-white">
+
+    <!-- Hidden Input for Creator Logo Upload -->
+    <input type="file" id="creatorLogoInput" accept="image/*" class="hidden">
+
+    <!-- Top Header -->
+    <header class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
+            
+            <!-- Left: Interactive Creator Logo + Title -->
+            <div class="flex items-center space-x-3">
+                <!-- Interactive Circular Logo / Creator Photo Slot -->
+                <div class="relative group cursor-pointer shrink-0" onclick="openCreatorLogoModal()" title="Click to set your personal photo or logo">
+                    <div id="defaultLogoIcon" class="w-11 h-11 sm:w-12 sm:h-12 bg-gradient-to-tr from-indigo-600 to-violet-600 text-white rounded-full flex items-center justify-center shadow-md shadow-indigo-500/20 border-2 border-white dark:border-slate-800 overflow-hidden">
+                        <i data-lucide="image-down" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                    </div>
+                    <img id="customLogoImg" src="" alt="Rahul Logo" class="hidden w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover shadow-md border-2 border-indigo-500">
+                    <div class="absolute -bottom-0.5 -right-0.5 bg-indigo-600 text-white p-1 rounded-full shadow border border-white dark:border-slate-900 group-hover:scale-110 transition-transform">
+                        <i data-lucide="camera" class="w-2.5 h-2.5"></i>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-lg sm:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-600 dark:from-indigo-400 dark:via-indigo-300 dark:to-violet-400 bg-clip-text text-transparent">
+                            Image Resizer By Rahul
+                        </h1>
+                        <span class="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            Pro Suite
+                        </span>
+                    </div>
+                    <p class="text-xs sm:text-sm font-bold text-indigo-600 dark:text-indigo-400 tracking-wide">
+                        Developed by Rahul Sardar Singh
+                    </p>
+                </div>
+            </div>
+
+            <!-- Right: Actions & Theme Switch -->
+            <div class="flex items-center space-x-2 sm:space-x-2.5">
+                <button type="button" onclick="openCreatorLogoModal()" class="hidden md:inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/70 dark:border-indigo-800/70 transition-colors">
+                    <i data-lucide="user-circle" class="w-3.5 h-3.5 mr-1.5"></i>
+                    Set Creator Photo
+                </button>
+
+                <span class="hidden lg:inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5 mr-1.5 text-emerald-600 dark:text-emerald-400"></i>
+                    100% On-Device
+                </span>
+
+                <!-- Dark / Light Mode Toggle -->
+                <button id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Dark/Light Theme" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 transition-colors">
+                    <i id="themeIconSun" data-lucide="sun" class="w-5 h-5 hidden text-amber-400"></i>
+                    <i id="themeIconMoon" data-lucide="moon" class="w-5 h-5 text-slate-700"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Primary Tool Navigation Tabs -->
+        <div class="bg-slate-100/80 dark:bg-slate-950/70 border-t border-slate-200/80 dark:border-slate-800/80">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center space-x-1 sm:space-x-2 py-2 overflow-x-auto no-scrollbar">
+                <button type="button" id="navTabImages" onclick="switchMainTool('images')" class="flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all bg-indigo-600 text-white shadow-sm shadow-indigo-500/20">
+                    <i data-lucide="images" class="w-4 h-4"></i>
+                    <span>1. Batch Image Resizer (KB)</span>
+                    <span id="navBadgeImgCount" class="hidden ml-1 px-1.5 py-0.2 bg-white/20 text-white rounded-full text-[10px]">0</span>
+                </button>
+
+                <button type="button" id="navTabPdfCompress" onclick="switchMainTool('pdf-compress')" class="flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800">
+                    <i data-lucide="file-minus-2" class="w-4 h-4 text-rose-500"></i>
+                    <span>2. PDF Size Reducer (KB)</span>
+                </button>
+
+                <button type="button" id="navTabPdfToImg" onclick="switchMainTool('pdf-to-img')" class="flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800">
+                    <i data-lucide="file-image" class="w-4 h-4 text-emerald-500"></i>
+                    <span>3. PDF to Image Converter</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Creator Logo / Photo Customization Modal -->
+    <div id="creatorLogoModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div class="bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 p-2 rounded-xl">
+                        <i data-lucide="user-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white">Personalize Creator Logo</h3>
+                        <p class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">Developed by Rahul Sardar Singh</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCreatorLogoModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Upload your personal photo or brand logo. It will automatically be compressed into a circular avatar and saved in your browser's local storage, plus you can copy its Base64 code to embed permanently!
+            </p>
+
+            <div class="flex flex-col items-center justify-center p-5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <img id="modalLogoPreview" src="" alt="Preview" class="hidden w-24 h-24 rounded-full object-cover border-4 border-indigo-500 shadow-lg mb-3">
+                <div id="modalDefaultAvatar" class="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center text-2xl font-extrabold shadow-lg mb-3">
+                    R
+                </div>
+                <div class="flex flex-wrap justify-center gap-2 mt-2">
+                    <button type="button" onclick="document.getElementById('creatorLogoInput').click()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow flex items-center space-x-1.5">
+                        <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                        <span>Upload Photo</span>
+                    </button>
+                    <button type="button" id="removeCreatorLogoBtn" onclick="removeCreatorLogo()" class="hidden px-3 py-2 bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 hover:bg-rose-200 text-xs font-semibold rounded-xl">
+                        Remove
+                    </button>
+                </div>
+            </div>
+
+            <div id="base64SnippetBox" class="hidden space-y-2">
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Permanent HTML `&lt;img&gt;` Tag (Copy & Paste if hosting online):
+                </label>
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="base64CodeInput" readonly class="w-full px-3 py-2 text-xs bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl font-mono text-slate-600 dark:text-slate-300">
+                    <button type="button" onclick="copyLogoBase64Tag()" class="px-3 py-2 bg-slate-800 dark:bg-slate-700 text-white text-xs font-semibold rounded-xl shrink-0 hover:bg-slate-700">
+                        Copy
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button type="button" onclick="closeCreatorLogoModal()" class="px-5 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold rounded-xl">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform transition-all duration-300 translate-y-24 opacity-0 pointer-events-none">
+        <div class="bg-slate-900 dark:bg-slate-800 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-sm font-medium border border-slate-700">
+            <i data-lucide="sparkles" class="w-5 h-5 text-indigo-400 shrink-0"></i>
+            <span id="toastMessage">Notification</span>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+        <!-- ========================================================================= -->
+        <!-- TOOL 1: BATCH IMAGE RESIZER & COMPRESSOR (MULTIPLE IMAGES)                -->
+        <!-- ========================================================================= -->
+        <div id="toolSectionImages" class="space-y-6">
+
+            <!-- STEP 1A: Multi-Image Upload Hero (Shown when queue is empty) -->
+            <section id="uploadSection" class="max-w-3xl mx-auto">
+                <div class="text-center mb-7">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-300 text-xs font-semibold mb-3">
+                        <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                        <span>Supports Single or Multiple Batch Image Upload</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-3">
+                        Batch Compress Images to Exact KB, Crop & Export to PDF
+                    </h2>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">
+                        Upload 1 or 50+ photos at once! Reduce file size to 200 KB, 50 KB, or 20 KB, apply Indian Exam presets, crop individually, download as a ZIP, or merge into a single PDF.
+                    </p>
+                </div>
+
+                <!-- Drag and Drop Zone (Multiple files supported) -->
+                <div id="dropZone" class="bg-white dark:bg-slate-900 border-2 border-dashed border-indigo-300 dark:border-indigo-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-3xl p-8 sm:p-12 text-center transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md group relative overflow-hidden">
+                    <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" multiple class="hidden">
+                    
+                    <div class="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/80 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/70 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-5 transition-transform duration-200 group-hover:scale-105 shadow-inner">
+                        <i data-lucide="upload-cloud" class="w-10 h-10"></i>
+                    </div>
+                    
+                    <h3 class="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+                        Click to select Multiple Images, or drag & drop here
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6">
+                        Select as many JPG, JPEG, PNG, or WEBP photos as you want for instant batch resizing
+                    </p>
+                    
+                    <div class="flex flex-wrap items-center justify-center gap-3">
+                        <button type="button" class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-md shadow-indigo-500/20 transition-all">
+                            <i data-lucide="folder-plus" class="w-4 h-4 mr-2"></i>
+                            Select Images (Single or Multiple)
+                        </button>
+                        <button type="button" onclick="event.stopPropagation(); loadSampleBatchImages();" class="inline-flex items-center px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-sm rounded-xl transition-all">
+                            <i data-lucide="sparkles" class="w-4 h-4 mr-2 text-indigo-500"></i>
+                            Load 2 Sample Photos (Photo + Sign)
+                        </button>
+                    </div>
+
+                    <!-- Quick Feature Cards -->
+                    <div class="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                        <div class="flex items-center space-x-2.5 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl">
+                            <div class="bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg shrink-0">
+                                <i data-lucide="layers" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-800 dark:text-slate-100">Batch Queue</div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">Multi-Image & ZIP</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2.5 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl">
+                            <div class="bg-violet-100 dark:bg-violet-900/60 text-violet-600 dark:text-violet-400 p-2 rounded-lg shrink-0">
+                                <i data-lucide="gauge" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-800 dark:text-slate-100">Exact KB Size</div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">20KB, 50KB, 200KB</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2.5 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl">
+                            <div class="bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 p-2 rounded-lg shrink-0">
+                                <i data-lucide="file-minus-2" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-800 dark:text-slate-100">PDF Compressor</div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">Reduce PDF KB</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2.5 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl">
+                            <div class="bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 p-2 rounded-lg shrink-0">
+                                <i data-lucide="file-image" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-800 dark:text-slate-100">PDF to Image</div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">Extract HD JPG/PNG</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- STEP 1B: Batch Workspace Section (Shown when 1 or more images are uploaded) -->
+            <section id="workspaceSection" class="hidden space-y-6">
+
+                <!-- Batch Image Queue Strip (Manage Multiple Uploaded Images) -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-5">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+                        <div class="flex items-center space-x-2.5">
+                            <span class="bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 p-2 rounded-xl">
+                                <i data-lucide="images" class="w-5 h-5"></i>
+                            </span>
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                                        Uploaded Images Queue (<span id="queueCountLabel">0</span>)
+                                    </h3>
+                                    <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                        Click any photo to preview or crop
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" onclick="document.getElementById('fileInput').click()" class="px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-300 font-bold text-xs rounded-xl border border-indigo-200 dark:border-indigo-800 flex items-center space-x-1.5 transition-all">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                <span>Add More Images</span>
+                            </button>
+                            <button type="button" onclick="processAllImagesInQueue()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center space-x-1.5 transition-all">
+                                <i data-lucide="zap" class="w-4 h-4"></i>
+                                <span>Apply Settings to All (<span id="applyAllCountLabel">0</span>)</span>
+                            </button>
+                            <button type="button" onclick="resetApp()" class="px-3 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-300 font-semibold text-xs rounded-xl flex items-center space-x-1 transition-all">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                <span>Clear All</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Horizontal Scrollable Thumbnail Cards -->
+                    <div id="imageQueueContainer" class="flex items-center space-x-3 overflow-x-auto pb-2 pt-1">
+                        <!-- Dynamically populated image cards -->
+                    </div>
+                </div>
+
+                <!-- One-Click Online Exam & Official Form Presets Bar -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center space-x-2">
+                            <span class="bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 p-1.5 rounded-lg">
+                                <i data-lucide="award" class="w-4 h-4"></i>
+                            </span>
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white">
+                                One-Click Online Form & Exam Presets (SSC, UPSC, IBPS, State Exams)
+                            </h3>
+                        </div>
+                        <span class="text-[11px] text-slate-500 dark:text-slate-400">Applies to selected photo (or click "Apply Settings to All" for batch)</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                        <button type="button" onclick="applyExamPreset('passport')" class="text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition-all group">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Passport Photo</span>
+                                <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500"></i>
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">20–50 KB • 3.5×4.5 cm</div>
+                            <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">350×450 px (JPG)</div>
+                        </button>
+
+                        <button type="button" onclick="applyExamPreset('signature')" class="text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition-all group">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Signature</span>
+                                <i data-lucide="pen-tool" class="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500"></i>
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">10–20 KB • 140×60 px</div>
+                            <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">Target ≤ 18 KB (JPG)</div>
+                        </button>
+
+                        <button type="button" onclick="applyExamPreset('thumb')" class="text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition-all group">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Thumb Impression</span>
+                                <i data-lucide="fingerprint" class="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500"></i>
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">10–20 KB • 240×240 px</div>
+                            <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">Target ≤ 18 KB (JPG)</div>
+                        </button>
+
+                        <button type="button" onclick="applyExamPreset('doc100')" class="text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition-all group">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Standard Doc</span>
+                                <i data-lucide="file-check" class="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500"></i>
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Under 100 KB</div>
+                            <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">Original Ratio (JPG)</div>
+                        </button>
+
+                        <button type="button" onclick="applyExamPreset('hq200')" class="text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 transition-all group col-span-2 sm:col-span-1">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">High Quality 200KB</span>
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500"></i>
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Under 200 KB</div>
+                            <div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">Original Ratio (JPG)</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Two-Column Controls & Preview Layout -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+                    
+                    <!-- LEFT COLUMN: Controls (5 Cols) -->
+                    <div class="lg:col-span-5 space-y-6">
+                        
+                        <!-- 1. File Size / Compression Card -->
+                        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 sm:p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-2.5">
+                                    <div class="bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg">
+                                        <i data-lucide="gauge" class="w-5 h-5"></i>
+                                    </div>
+                                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">1. Reduce File Size (KB)</h3>
+                                </div>
+                                <span class="text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-2.5 py-1 rounded-md">Compression</span>
+                            </div>
+
+                            <!-- Mode Switcher: Target KB vs Manual Quality -->
+                            <div class="grid grid-cols-2 gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-5">
+                                <button type="button" id="modeTargetBtn" onclick="setCompressionMode('target')" class="py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm">
+                                    Target Size (KB)
+                                </button>
+                                <button type="button" id="modeQualityBtn" onclick="setCompressionMode('quality')" class="py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                                    Manual Quality %
+                                </button>
+                            </div>
+
+                            <!-- Target KB Controls -->
+                            <div id="targetSizeControls" class="space-y-4">
+                                <div>
+                                    <label for="targetKbInput" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                        Maximum Target File Size (in KB)
+                                    </label>
+                                    <div class="relative flex items-center">
+                                        <input type="number" id="targetKbInput" value="200" min="5" max="10000" step="5"
+                                            class="w-full pl-4 pr-14 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                                        <span class="absolute right-4 text-sm font-bold text-slate-400">KB</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+                                        Smart binary search ensures your output stays at or below this KB limit.
+                                    </p>
+                                </div>
+
+                                <!-- Quick Presets -->
+                                <div>
+                                    <span class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Quick KB Targets:</span>
+                                    <div class="grid grid-cols-6 gap-1.5">
+                                        <button type="button" onclick="setTargetPreset(15)" class="preset-kb-btn py-1.5 px-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-indigo-400 transition-colors">15 KB</button>
+                                        <button type="button" onclick="setTargetPreset(20)" class="preset-kb-btn py-1.5 px-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-indigo-400 transition-colors">20 KB</button>
+                                        <button type="button" onclick="setTargetPreset(50)" class="preset-kb-btn py-1.5 px-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-indigo-400 transition-colors">50 KB</button>
+                                        <button type="button" onclick="setTargetPreset(100)" class="preset-kb-btn py-1.5 px-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-indigo-400 transition-colors">100 KB</button>
+                                        <button type="button" onclick="setTargetPreset(200)" class="preset-kb-btn py-1.5 px-1.5 text-xs font-semibold rounded-lg border border-indigo-500 bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 transition-colors">200 KB</button>
+                                        <button type="button" onclick="setTargetPreset(500)" class="preset-kb-btn py-1.5 px-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-indigo-400 transition-colors">500 KB</button>
+                                    </div>
+                                </div>
+
+                                <label class="flex items-start space-x-2.5 pt-1 cursor-pointer select-none">
+                                    <input type="checkbox" id="autoScaleForSize" checked class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                                    <span class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                        Allow smart dimension scaling if required to strictly hit very low KB targets (e.g. 15 KB–50 KB).
+                                    </span>
+                                </label>
+                            </div>
+
+                            <!-- Manual Quality Slider Controls -->
+                            <div id="manualQualityControls" class="hidden space-y-4">
+                                <div>
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label for="qualitySlider" class="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Image Quality</label>
+                                        <span id="qualityValueDisplay" class="text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2.5 py-0.5 rounded-md">80%</span>
+                                    </div>
+                                    <input type="range" id="qualitySlider" min="1" max="100" value="80" class="w-full">
+                                    <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                                        <span>Smallest File (1%)</span>
+                                        <span>Balanced (80%)</span>
+                                        <span>Max Quality (100%)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Image Resizing (Dimensions) Card -->
+                        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 sm:p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-2.5">
+                                    <div class="bg-violet-100 dark:bg-violet-900/60 text-violet-600 dark:text-violet-400 p-2 rounded-lg">
+                                        <i data-lucide="maximize-2" class="w-5 h-5"></i>
+                                    </div>
+                                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">2. Resize Dimensions</h3>
+                                </div>
+                                <button type="button" onclick="resetDimensionsToOriginal()" class="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center">
+                                    <i data-lucide="undo-2" class="w-3.5 h-3.5 mr-1"></i> Original Size
+                                </button>
+                            </div>
+
+                            <!-- Dimension Mode Switcher: Pixels vs Percentage vs Centimeters -->
+                            <div class="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-5">
+                                <button type="button" id="resizePixelsBtn" onclick="setResizeMode('pixels')" class="py-2 px-2 rounded-lg text-xs font-semibold transition-all bg-white dark:bg-slate-900 text-violet-600 dark:text-violet-400 shadow-sm">
+                                    Pixels (px)
+                                </button>
+                                <button type="button" id="resizePercentBtn" onclick="setResizeMode('percent')" class="py-2 px-2 rounded-lg text-xs font-semibold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                                    Percent (%)
+                                </button>
+                                <button type="button" id="resizeCmBtn" onclick="setResizeMode('cm')" class="py-2 px-2 rounded-lg text-xs font-semibold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                                    Print (cm)
+                                </button>
+                            </div>
+
+                            <!-- Pixel Inputs -->
+                            <div id="pixelResizeControls" class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="widthInput" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Width (px)</label>
+                                        <input type="number" id="widthInput" min="10" max="12000"
+                                            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-semibold text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label for="heightInput" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Height (px)</label>
+                                        <input type="number" id="heightInput" min="10" max="12000"
+                                            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-semibold text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Percentage Scale Controls -->
+                            <div id="percentResizeControls" class="hidden space-y-4">
+                                <div>
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label for="scaleSlider" class="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Dimension Scale</label>
+                                        <span id="scaleValueDisplay" class="text-sm font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950 px-2.5 py-0.5 rounded-md">100%</span>
+                                    </div>
+                                    <input type="range" id="scaleSlider" min="10" max="200" value="100" step="5" class="w-full">
+                                    <div class="grid grid-cols-5 gap-1.5 mt-3">
+                                        <button type="button" onclick="setScalePreset(25)" class="py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-violet-400">25%</button>
+                                        <button type="button" onclick="setScalePreset(50)" class="py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-violet-400">50%</button>
+                                        <button type="button" onclick="setScalePreset(75)" class="py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-violet-400">75%</button>
+                                        <button type="button" onclick="setScalePreset(100)" class="py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-violet-400">100%</button>
+                                        <button type="button" onclick="setScalePreset(150)" class="py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-violet-400">150%</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Centimeters (cm at 300 DPI) Controls -->
+                            <div id="cmResizeControls" class="hidden space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="widthCmInput" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Width (cm)</label>
+                                        <input type="number" id="widthCmInput" step="0.1" min="0.5" max="100"
+                                            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-semibold text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label for="heightCmInput" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Height (cm)</label>
+                                        <input type="number" id="heightCmInput" step="0.1" min="0.5" max="100"
+                                            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-semibold text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Calculated at 300 DPI print resolution (e.g., 3.5 cm × 4.5 cm Passport Size).
+                                </p>
+                            </div>
+
+                            <!-- Lock Aspect Ratio -->
+                            <div class="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
+                                <label class="inline-flex items-center space-x-2 cursor-pointer select-none">
+                                    <input type="checkbox" id="lockAspectCheckbox" checked class="w-4 h-4 text-violet-600 rounded border-slate-300 focus:ring-violet-500">
+                                    <span class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center">
+                                        <i data-lucide="lock" class="w-3.5 h-3.5 mr-1.5 text-slate-500"></i>
+                                        Lock Aspect Ratio
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 3. Output Format & Batch Actions Card -->
+                        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 sm:p-6 space-y-4">
+                            <div>
+                                <label for="formatSelect" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                    3. Output Format
+                                </label>
+                                <select id="formatSelect" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-semibold text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    <option value="image/jpeg">JPEG (.jpg) — Best for small KB size & forms</option>
+                                    <option value="image/webp">WEBP (.webp) — Modern ultra compression</option>
+                                    <option value="image/png">PNG (.png) — Lossless / Transparency</option>
+                                    <option value="application/pdf">PDF Document (.pdf) — Ready for document upload</option>
+                                </select>
+                                <p id="pngWarning" class="hidden text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 rounded-lg p-2 mt-2">
+                                    Note: PNG is lossless. To strictly achieve small KB sizes (like 20KB–200KB), JPEG or WEBP is strongly recommended.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label for="customNameInput" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+                                    Custom Output Filename (Selected Image)
+                                </label>
+                                <input type="text" id="customNameInput" placeholder="e.g. rahul-passport-photo"
+                                    class="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                                <button type="button" onclick="processCurrentImage()" class="py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow flex items-center justify-center space-x-1.5 transition-all">
+                                    <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                    <span>Apply to Selected</span>
+                                </button>
+                                <button type="button" onclick="processAllImagesInQueue()" class="py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow flex items-center justify-center space-x-1.5 transition-all">
+                                    <i data-lucide="layers" class="w-4 h-4"></i>
+                                    <span>Apply to All Images</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: Live Preview, Visual Cropper & Batch Download (7 Cols) -->
+                    <div class="lg:col-span-7 space-y-6">
+                        
+                        <!-- Comparison Stats & Download Banner -->
+                        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-6">
+                            <div class="grid grid-cols-1 sm:grid-cols-11 gap-4 items-center">
+                                
+                                <!-- Original Info -->
+                                <div class="sm:col-span-5 bg-slate-50 dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200/80 dark:border-slate-700">
+                                    <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Selected Original</div>
+                                    <div class="flex items-baseline space-x-2">
+                                        <span id="origSizeBadge" class="text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-slate-100">0 KB</span>
+                                        <span id="origFormatBadge" class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">JPG</span>
+                                    </div>
+                                    <div id="origDimBadge" class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">0 × 0 px</div>
+                                </div>
+
+                                <!-- Arrow Icon -->
+                                <div class="sm:col-span-1 flex justify-center">
+                                    <div class="w-9 h-9 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center rotate-90 sm:rotate-0">
+                                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Processed Info -->
+                                <div class="sm:col-span-5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl p-4 border border-emerald-200 dark:border-emerald-800/70 relative overflow-hidden">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Compressed Output</span>
+                                        <span id="savingsBadge" class="text-[11px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">-0%</span>
+                                    </div>
+                                    <div class="flex items-baseline space-x-2">
+                                        <span id="newSizeBadge" class="text-xl sm:text-2xl font-extrabold text-emerald-900 dark:text-emerald-200">0 KB</span>
+                                        <span id="newFormatBadge" class="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase">JPG</span>
+                                    </div>
+                                    <div id="newDimBadge" class="text-xs font-medium text-emerald-700 dark:text-emerald-400 mt-1">0 × 0 px</div>
+                                </div>
+                            </div>
+
+                            <!-- Single & Batch Download Buttons -->
+                            <div class="mt-5 pt-5 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <button type="button" id="downloadBtn" onclick="downloadProcessedOutput()" class="py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-500/20 flex items-center justify-center space-x-2 transition-all">
+                                    <i data-lucide="download" class="w-4 h-4 shrink-0"></i>
+                                    <span id="downloadBtnText">Download Selected</span>
+                                </button>
+
+                                <button type="button" onclick="downloadAllImagesAsZip()" class="py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-indigo-500/20 flex items-center justify-center space-x-2 transition-all">
+                                    <i data-lucide="folder-archive" class="w-4 h-4 shrink-0"></i>
+                                    <span>Download All (ZIP)</span>
+                                </button>
+
+                                <button type="button" onclick="mergeAllQueueImagesToPDF()" class="py-3.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-rose-500/20 flex items-center justify-center space-x-2 transition-all">
+                                    <i data-lucide="file-text" class="w-4 h-4 shrink-0"></i>
+                                    <span>Merge All to 1 PDF</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Preview & Interactive Cropper Card -->
+                        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                            
+                            <!-- Card Header with Mode Switcher -->
+                            <div class="px-4 sm:px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-800/40">
+                                <div class="flex items-center space-x-2 truncate">
+                                    <i data-lucide="image" class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0"></i>
+                                    <span id="fileNameDisplay" class="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[180px] sm:max-w-xs">image.jpg</span>
+                                </div>
+
+                                <div class="inline-flex bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+                                    <button type="button" id="viewProcessedBtn" onclick="switchPreviewTab('processed')" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm transition-all">
+                                        Output Preview
+                                    </button>
+                                    <button type="button" id="viewOriginalBtn" onclick="switchPreviewTab('original')" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">
+                                        Original
+                                    </button>
+                                    <button type="button" id="viewCropBtn" onclick="switchPreviewTab('crop')" class="px-3 py-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center space-x-1 transition-all">
+                                        <i data-lucide="crop" class="w-3.5 h-3.5"></i>
+                                        <span>Crop & Rotate</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Interactive Crop & Rotate Toolbar -->
+                            <div id="cropToolbar" class="hidden bg-indigo-50/70 dark:bg-indigo-950/40 border-b border-indigo-100 dark:border-indigo-900/60 p-3 sm:p-4 space-y-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center space-x-1.5">
+                                        <button type="button" onclick="rotateCrop(-90)" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center space-x-1">
+                                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                            <span class="hidden sm:inline">-90°</span>
+                                        </button>
+                                        <button type="button" onclick="rotateCrop(90)" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center space-x-1">
+                                            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                                            <span class="hidden sm:inline">+90°</span>
+                                        </button>
+                                        <button type="button" onclick="flipCrop('h')" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 text-xs font-semibold">
+                                            <i data-lucide="flip-horizontal" class="w-4 h-4"></i>
+                                        </button>
+                                        <button type="button" onclick="flipCrop('v')" class="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 text-xs font-semibold">
+                                            <i data-lucide="flip-vertical" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-wrap items-center gap-1">
+                                        <button type="button" onclick="setCropRatio(NaN)" class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold hover:border-indigo-500">Free</button>
+                                        <button type="button" onclick="setCropRatio(3.5/4.5)" class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold hover:border-indigo-500">Passport (3.5:4.5)</button>
+                                        <button type="button" onclick="setCropRatio(7/3)" class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold hover:border-indigo-500">Sign (7:3)</button>
+                                        <button type="button" onclick="setCropRatio(1)" class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold hover:border-indigo-500">1:1</button>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-between pt-2 border-t border-indigo-200/60 dark:border-indigo-800/50">
+                                    <button type="button" onclick="revertToUncroppedMaster()" class="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-600 flex items-center space-x-1">
+                                        <i data-lucide="history" class="w-3.5 h-3.5"></i>
+                                        <span>Restore Uncropped Photo</span>
+                                    </button>
+                                    <div class="flex items-center space-x-2">
+                                        <button type="button" onclick="switchPreviewTab('processed')" class="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">
+                                            Cancel
+                                        </button>
+                                        <button type="button" onclick="applyCropChanges()" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm flex items-center space-x-1">
+                                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                            <span>Apply Crop & Compress</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Canvas / Image Display Area -->
+                            <div class="relative bg-checkerboard min-h-[340px] sm:min-h-[420px] max-h-[520px] flex items-center justify-center p-4 overflow-hidden">
+                                <div id="processingOverlay" class="hidden absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
+                                    <div class="w-11 h-11 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+                                    <p id="processingOverlayTitle" class="text-sm font-bold text-slate-800 dark:text-white">Optimizing Image...</p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">Calculating exact KB & dimensions</p>
+                                </div>
+
+                                <img id="previewImageElement" src="" alt="Preview" class="max-w-full max-h-[450px] w-auto h-auto object-contain rounded-lg shadow-sm transition-opacity duration-200">
+
+                                <div id="cropperWrapper" class="hidden cropper-Wrapper">
+                                    <img id="cropperImageElement" src="" alt="Cropper Target" class="max-w-full block">
+                                </div>
+                                
+                                <div id="previewBadgePill" class="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-semibold px-3 py-1 rounded-full">
+                                    Showing: <span id="currentViewLabel" class="text-indigo-300">Compressed Output</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TOOL 2: PDF FILE SIZE REDUCER (COMPRESS PDF TO TARGET KB)                 -->
+        <!-- ========================================================================= -->
+        <div id="toolSectionPdfCompress" class="hidden space-y-6">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-7">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/60 text-rose-600 dark:text-rose-300 text-xs font-semibold mb-3">
+                        <i data-lucide="file-minus-2" class="w-3.5 h-3.5"></i>
+                        <span>Smart PDF Size Reducer (100% Client-Side)</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">
+                        Reduce PDF File Size to 100 KB, 200 KB, 300 KB or Custom KB
+                    </h2>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">
+                        Compress scanned documents, certificates, and multi-page PDFs to strictly fit online application upload limits.
+                    </p>
+                </div>
+
+                <!-- PDF Upload DropZone -->
+                <div id="pdfCompressDropZone" onclick="document.getElementById('pdfCompressInput').click()" class="bg-white dark:bg-slate-900 border-2 border-dashed border-rose-300 dark:border-rose-800 hover:border-rose-500 rounded-3xl p-8 sm:p-10 text-center transition-all cursor-pointer shadow-sm hover:shadow-md">
+                    <input type="file" id="pdfCompressInput" accept="application/pdf" class="hidden">
+                    <div class="w-16 h-16 bg-rose-50 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="file-up" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">
+                        Click to select a PDF file, or drag & drop here
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-5">
+                        Supports any single or multi-page PDF document
+                    </p>
+                    <div class="flex flex-wrap justify-center gap-3">
+                        <button type="button" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-md shadow-rose-500/20 inline-flex items-center">
+                            <i data-lucide="folder-open" class="w-4 h-4 mr-2"></i>
+                            Select PDF File
+                        </button>
+                        <button type="button" onclick="event.stopPropagation(); generateSamplePdfForCompression();" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl inline-flex items-center">
+                            <i data-lucide="sparkles" class="w-4 h-4 mr-1.5 text-rose-500"></i>
+                            Try Sample 2-Page PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PDF Compressor Workspace (Hidden until PDF loaded) -->
+                <div id="pdfCompressWorkspace" class="hidden mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <!-- Controls (5 Cols) -->
+                    <div class="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-5 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                                <i data-lucide="sliders" class="w-5 h-5 text-rose-600"></i>
+                                <span>PDF Compression Settings</span>
+                            </h3>
+                            <span id="pdfPageCountBadge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300">1 Page</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                Target Maximum PDF Size (in KB)
+                            </label>
+                            <div class="relative flex items-center">
+                                <input type="number" id="pdfTargetKbInput" value="200" min="20" max="20000" step="10"
+                                    class="w-full pl-4 pr-14 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold text-base focus:ring-2 focus:ring-rose-500 outline-none">
+                                <span class="absolute right-4 text-sm font-bold text-slate-400">KB</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Quick PDF Size Presets:</span>
+                            <div class="grid grid-cols-5 gap-1.5">
+                                <button type="button" onclick="setPdfTargetPreset(100)" class="pdf-preset-btn py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-rose-400">100 KB</button>
+                                <button type="button" onclick="setPdfTargetPreset(200)" class="pdf-preset-btn py-1.5 text-xs font-semibold rounded-lg border border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300">200 KB</button>
+                                <button type="button" onclick="setPdfTargetPreset(300)" class="pdf-preset-btn py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-rose-400">300 KB</button>
+                                <button type="button" onclick="setPdfTargetPreset(500)" class="pdf-preset-btn py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-rose-400">500 KB</button>
+                                <button type="button" onclick="setPdfTargetPreset(1000)" class="pdf-preset-btn py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-rose-400">1 MB</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Page Resolution Scale</label>
+                                <span id="pdfScaleLabel" class="text-xs font-bold text-rose-600 dark:text-rose-400">Auto-Smart</span>
+                            </div>
+                            <select id="pdfResolutionMode" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-semibold text-xs sm:text-sm outline-none">
+                                <option value="auto">Smart Auto-Fit (Guarantees Target KB)</option>
+                                <option value="1.5">High Readability (150 DPI)</option>
+                                <option value="1.1">Balanced Compression (110 DPI)</option>
+                                <option value="0.8">Extreme Compression (80 DPI)</option>
+                            </select>
+                        </div>
+
+                        <button type="button" onclick="compressLoadedPdf()" class="w-full py-3.5 px-5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm rounded-xl shadow-md shadow-rose-500/20 flex items-center justify-center space-x-2 transition-all">
+                            <i data-lucide="zap" class="w-4 h-4"></i>
+                            <span>Compress PDF to Target KB Now</span>
+                        </button>
+                    </div>
+
+                    <!-- Output & Preview (7 Cols) -->
+                    <div class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-5 shadow-sm relative overflow-hidden">
+                        <div id="pdfCompressSpinner" class="hidden absolute inset-0 bg-white/85 dark:bg-slate-900/85 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
+                            <div class="w-11 h-11 border-4 border-rose-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+                            <p id="pdfCompressStatusText" class="text-sm font-bold text-slate-800 dark:text-white">Compressing PDF Pages...</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Optimizing to reach target KB size</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                                <div class="text-xs font-bold uppercase text-slate-400 mb-1">Original PDF Size</div>
+                                <div id="pdfOrigSizeDisplay" class="text-2xl font-extrabold text-slate-800 dark:text-white">0 KB</div>
+                                <div id="pdfOrigNameDisplay" class="text-xs text-slate-500 truncate mt-1">document.pdf</div>
+                            </div>
+
+                            <div class="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/70">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-300">Compressed PDF Size</span>
+                                    <span id="pdfSavedBadge" class="text-[11px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">Ready</span>
+                                </div>
+                                <div id="pdfNewSizeDisplay" class="text-2xl font-extrabold text-emerald-900 dark:text-emerald-200">0 KB</div>
+                                <div id="pdfQualitySummary" class="text-xs text-emerald-700 dark:text-emerald-400 mt-1">Optimized PDF</div>
+                            </div>
+                        </div>
+
+                        <button type="button" id="downloadCompressedPdfBtn" onclick="downloadCompressedPdfFile()" class="w-full py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-md shadow-emerald-500/20 flex items-center justify-center space-x-2 transition-all">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                            <span>Download Compressed PDF</span>
+                        </button>
+
+                        <div>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">Compressed Page Previews</h4>
+                            <div id="pdfCompressedPagesGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[320px] overflow-y-auto p-1">
+                                <!-- Page thumbnails -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- TOOL 3: PDF TO IMAGE CONVERTER (EXTRACT PAGES AS HIGH-RES JPG/PNG)        -->
+        <!-- ========================================================================= -->
+        <div id="toolSectionPdfToImg" class="hidden space-y-6">
+            <div class="max-w-5xl mx-auto">
+                <div class="text-center mb-7">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-300 text-xs font-semibold mb-3">
+                        <i data-lucide="file-image" class="w-3.5 h-3.5"></i>
+                        <span>High-Resolution PDF to JPG / PNG Extractor</span>
+                    </div>
+                    <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-2">
+                        Convert PDF Pages to High-Quality Images (JPG, PNG, WEBP)
+                    </h2>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">
+                        Upload any PDF document to convert every page into crisp images. Download individual pages, send any page to the Image Resizer, or download all pages as a ZIP archive!
+                    </p>
+                </div>
+
+                <!-- PDF to Image Upload Zone -->
+                <div id="pdfToImgDropZone" onclick="document.getElementById('pdfToImgInput').click()" class="bg-white dark:bg-slate-900 border-2 border-dashed border-emerald-300 dark:border-emerald-800 hover:border-emerald-500 rounded-3xl p-8 sm:p-10 text-center transition-all cursor-pointer shadow-sm hover:shadow-md">
+                    <input type="file" id="pdfToImgInput" accept="application/pdf" class="hidden">
+                    <div class="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="file-spreadsheet" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">
+                        Click to select a PDF to convert into Images
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-5">
+                        Extracts all pages in seconds right inside your browser
+                    </p>
+                    <div class="flex flex-wrap justify-center gap-3">
+                        <button type="button" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-500/20 inline-flex items-center">
+                            <i data-lucide="folder-open" class="w-4 h-4 mr-2"></i>
+                            Select PDF File
+                        </button>
+                        <button type="button" onclick="event.stopPropagation(); generateSamplePdfForExtraction();" class="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs sm:text-sm rounded-xl inline-flex items-center">
+                            <i data-lucide="sparkles" class="w-4 h-4 mr-1.5 text-emerald-500"></i>
+                            Try Sample PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PDF to Image Toolbar & Output Grid -->
+                <div id="pdfToImgWorkspace" class="hidden mt-6 space-y-6">
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">Image Format</label>
+                                <select id="pdfExtractFormat" onchange="reRenderPdfToImages()" class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold">
+                                    <option value="image/jpeg">JPG (Small Size)</option>
+                                    <option value="image/png">PNG (Lossless HD)</option>
+                                    <option value="image/webp">WEBP (Modern)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold uppercase text-slate-400 mb-1">DPI / Quality</label>
+                                <select id="pdfExtractScale" onchange="reRenderPdfToImages()" class="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold">
+                                    <option value="1.5">Standard (150 DPI)</option>
+                                    <option value="2.2" selected>High HD (220 DPI)</option>
+                                    <option value="3.0">Ultra Print (300 DPI)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <button type="button" onclick="sendExtractedPagesToBatchResizer()" class="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-300 font-bold text-xs rounded-xl border border-indigo-200 dark:border-indigo-800 flex items-center space-x-1.5">
+                                <i data-lucide="send" class="w-4 h-4"></i>
+                                <span>Edit All in Batch Image Resizer</span>
+                            </button>
+                            <button type="button" onclick="downloadAllExtractedPdfImagesZip()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-emerald-500/20 flex items-center space-x-2">
+                                <i data-lucide="folder-archive" class="w-4 h-4"></i>
+                                <span>Download All Pages as ZIP</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Extracted Pages Grid -->
+                    <div id="pdfExtractedPagesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                        <!-- Populated with rendered PDF page cards -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-12 py-6 transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2">
+            <div class="font-semibold text-slate-700 dark:text-slate-200 flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1">
+                <span>Image Resizer By Rahul &copy; <span id="currentYear"></span></span>
+                <span>•</span>
+                <span class="text-indigo-600 dark:text-indigo-400 font-bold">Developed by Rahul Sardar Singh</span>
+                <span>•</span>
+                <button type="button" onclick="openCreatorLogoModal()" class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 underline">Customize Logo</button>
+            </div>
+            <div>
+                100% Client-Side Privacy — Your images & PDFs are processed directly in your browser.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Application JavaScript -->
+    <script>
+        // Configure PDF.js Worker
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // Initialize Lucide icons & Footer Year
+        lucide.createIcons();
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // ============================================================================
+        // 1. THEME & CREATOR LOGO / PHOTO PERSONALIZATION
+        // ============================================================================
+        function initTheme() {
+            const savedTheme = localStorage.getItem('rahul_resizer_theme');
+            const htmlEl = document.documentElement;
+            if (savedTheme === 'dark') {
+                htmlEl.classList.add('dark');
+                htmlEl.classList.remove('light');
+            } else {
+                htmlEl.classList.remove('dark');
+                htmlEl.classList.add('light');
+            }
+            updateThemeIcons();
+        }
+
+        function toggleTheme() {
+            const htmlEl = document.documentElement;
+            const isDark = htmlEl.classList.toggle('dark');
+            htmlEl.classList.toggle('light', !isDark);
+            localStorage.setItem('rahul_resizer_theme', isDark ? 'dark' : 'light');
+            updateThemeIcons();
+        }
+
+        function updateThemeIcons() {
+            const isDark = document.documentElement.classList.contains('dark');
+            document.getElementById('themeIconSun').classList.toggle('hidden', !isDark);
+            document.getElementById('themeIconMoon').classList.toggle('hidden', isDark);
+        }
+        initTheme();
+
+        // Creator Logo Management
+        function loadSavedCreatorLogo() {
+            const savedBase64 = localStorage.getItem('rahul_creator_logo');
+            const defaultIcon = document.getElementById('defaultLogoIcon');
+            const customImg = document.getElementById('customLogoImg');
+            const modalPreview = document.getElementById('modalLogoPreview');
+            const modalDefault = document.getElementById('modalDefaultAvatar');
+            const removeBtn = document.getElementById('removeCreatorLogoBtn');
+            const snippetBox = document.getElementById('base64SnippetBox');
+            const codeInput = document.getElementById('base64CodeInput');
+
+            if (savedBase64) {
+                defaultIcon.classList.add('hidden');
+                customImg.src = savedBase64;
+                customImg.classList.remove('hidden');
+
+                modalDefault.classList.add('hidden');
+                modalPreview.src = savedBase64;
+                modalPreview.classList.remove('hidden');
+                removeBtn.classList.remove('hidden');
+                snippetBox.classList.remove('hidden');
+                codeInput.value = `<img src="${savedBase64}" alt="Rahul" class="w-12 h-12 rounded-full object-cover">`;
+            } else {
+                defaultIcon.classList.remove('hidden');
+                customImg.classList.add('hidden');
+                modalDefault.classList.remove('hidden');
+                modalPreview.classList.add('hidden');
+                removeBtn.classList.add('hidden');
+                snippetBox.classList.add('hidden');
+            }
+        }
+        loadSavedCreatorLogo();
+
+        function openCreatorLogoModal() {
+            document.getElementById('creatorLogoModal').classList.remove('hidden');
+        }
+        function closeCreatorLogoModal() {
+            document.getElementById('creatorLogoModal').classList.add('hidden');
+        }
+
+        document.getElementById('creatorLogoInput').addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Create a square 160x160 thumbnail so it fits comfortably in localStorage
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 160;
+                        canvas.height = 160;
+                        const ctx = canvas.getContext('2d');
+                        const minSide = Math.min(img.width, img.height);
+                        const sx = (img.width - minSide) / 2;
+                        const sy = (img.height - minSide) / 2;
+                        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, 160, 160);
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+                        localStorage.setItem('rahul_creator_logo', dataUrl);
+                        loadSavedCreatorLogo();
+                        showToast('Creator photo updated & saved!');
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function removeCreatorLogo() {
+            localStorage.removeItem('rahul_creator_logo');
+            loadSavedCreatorLogo();
+            showToast('Creator photo removed.');
+        }
+
+        function copyLogoBase64Tag() {
+            const input = document.getElementById('base64CodeInput');
+            input.select();
+            document.execCommand('copy');
+            showToast('Copied permanent HTML <img> snippet!');
+        }
+
+        // ============================================================================
+        // 2. MAIN NAVIGATION TABS (IMAGES vs PDF COMPRESSOR vs PDF TO IMAGE)
+        // ============================================================================
+        function switchMainTool(tool) {
+            const secImages = document.getElementById('toolSectionImages');
+            const secPdfComp = document.getElementById('toolSectionPdfCompress');
+            const secPdfImg = document.getElementById('toolSectionPdfToImg');
+
+            const tabImages = document.getElementById('navTabImages');
+            const tabPdfComp = document.getElementById('navTabPdfCompress');
+            const tabPdfImg = document.getElementById('navTabPdfToImg');
+
+            const activeClass = 'flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all bg-indigo-600 text-white shadow-sm shadow-indigo-500/20';
+            const inactiveClass = 'flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800';
+
+            secImages.classList.toggle('hidden', tool !== 'images');
+            secPdfComp.classList.toggle('hidden', tool !== 'pdf-compress');
+            secPdfImg.classList.toggle('hidden', tool !== 'pdf-to-img');
+
+            tabImages.className = tool === 'images' ? activeClass : inactiveClass;
+            tabPdfComp.className = tool === 'pdf-compress' ? activeClass : inactiveClass;
+            tabPdfImg.className = tool === 'pdf-to-img' ? activeClass : inactiveClass;
+        }
+
+        // ============================================================================
+        // 3. BATCH IMAGE RESIZER & COMPRESSOR (MULTI-IMAGE QUEUE ENGINE)
+        // ============================================================================
+        const DPI_300_CM_FACTOR = 300 / 2.54; // ~118.11 px per cm
+
+        // Array of image items: { id, file, name, customName, masterUncroppedUrl, workingUrl, origWidth, origHeight, processedBlob, processedUrl, finalW, finalH }
+        let imageQueue = [];
+        let activeImageIndex = -1;
+
+        let originalFile = null;
+        let masterUncroppedUrl = null;
+        let originalImage = new Image();
+        let originalObjectUrl = null;
+        let processedBlob = null;
+        let processedObjectUrl = null;
+
+        let origWidth = 0;
+        let origHeight = 0;
+        let aspectRatio = 1;
+        let finalRenderedW = 0;
+        let finalRenderedH = 0;
+
+        let compressionMode = 'target';
+        let resizeMode = 'pixels';
+        let currentPreviewTab = 'processed';
+        let debounceTimer = null;
+
+        let cropperInstance = null;
+        let flipScaleX = 1;
+        let flipScaleY = 1;
+
+        // DOM Elements
+        const uploadSection = document.getElementById('uploadSection');
+        const workspaceSection = document.getElementById('workspaceSection');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        const targetKbInput = document.getElementById('targetKbInput');
+        const autoScaleForSize = document.getElementById('autoScaleForSize');
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityValueDisplay = document.getElementById('qualityValueDisplay');
+
+        const widthInput = document.getElementById('widthInput');
+        const heightInput = document.getElementById('heightInput');
+        const widthCmInput = document.getElementById('widthCmInput');
+        const heightCmInput = document.getElementById('heightCmInput');
+        const lockAspectCheckbox = document.getElementById('lockAspectCheckbox');
+        const scaleSlider = document.getElementById('scaleSlider');
+        const scaleValueDisplay = document.getElementById('scaleValueDisplay');
+
+        const formatSelect = document.getElementById('formatSelect');
+        const customNameInput = document.getElementById('customNameInput');
+        const pngWarning = document.getElementById('pngWarning');
+
+        const origSizeBadge = document.getElementById('origSizeBadge');
+        const origFormatBadge = document.getElementById('origFormatBadge');
+        const origDimBadge = document.getElementById('origDimBadge');
+
+        const newSizeBadge = document.getElementById('newSizeBadge');
+        const newFormatBadge = document.getElementById('newFormatBadge');
+        const newDimBadge = document.getElementById('newDimBadge');
+        const savingsBadge = document.getElementById('savingsBadge');
+
+        const previewImageElement = document.getElementById('previewImageElement');
+        const cropperWrapper = document.getElementById('cropperWrapper');
+        const cropperImageElement = document.getElementById('cropperImageElement');
+        const cropToolbar = document.getElementById('cropToolbar');
+        const previewBadgePill = document.getElementById('previewBadgePill');
+        const processingOverlay = document.getElementById('processingOverlay');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const currentViewLabel = document.getElementById('currentViewLabel');
+        const downloadBtnText = document.getElementById('downloadBtnText');
+
+        function formatFileSize(bytes) {
+            if (!bytes || bytes === 0) return '0 KB';
+            const kb = bytes / 1024;
+            if (kb < 1024) return kb.toFixed(1) + ' KB';
+            return (kb / 1024).toFixed(2) + ' MB (' + Math.round(kb) + ' KB)';
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3400);
+        }
+
+        // Drag & Drop Multiple Files
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-indigo-600', 'bg-indigo-50/40');
+        });
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-600', 'bg-indigo-50/40');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-600', 'bg-indigo-50/40');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleMultipleUploadedFiles(e.dataTransfer.files);
+            }
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                handleMultipleUploadedFiles(e.target.files);
+                fileInput.value = '';
+            }
+        });
+
+        // Handle Multiple Image Files Added to Queue
+        async function handleMultipleUploadedFiles(fileList) {
+            const validFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+            if (validFiles.length === 0) {
+                showToast('Please select valid image files (JPG, PNG, WEBP).');
+                return;
+            }
+
+            const wasEmpty = imageQueue.length === 0;
+
+            for (const file of validFiles) {
+                const masterUrl = URL.createObjectURL(file);
+                const workUrl = URL.createObjectURL(file);
+                const baseName = file.name.replace(/\.[^/.]+$/, '');
+                const dimensions = await getImageDimensionsFromUrl(workUrl);
+
+                const item = {
+                    id: 'img_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                    file: file,
+                    name: file.name,
+                    customName: `${baseName}-resized`,
+                    masterUncroppedUrl: masterUrl,
+                    workingUrl: workUrl,
+                    origWidth: dimensions.width,
+                    origHeight: dimensions.height,
+                    processedBlob: null,
+                    processedUrl: null,
+                    finalW: dimensions.width,
+                    finalH: dimensions.height
+                };
+                imageQueue.push(item);
+            }
+
+            uploadSection.classList.add('hidden');
+            workspaceSection.classList.remove('hidden');
+            updateQueueBadges();
+
+            if (wasEmpty) {
+                await selectQueueImage(0, true);
+                if (imageQueue.length > 1) {
+                    await processAllImagesInQueue(true);
+                }
+            } else {
+                await processAllImagesInQueue(true);
+            }
+
+            showToast(`Added ${validFiles.length} image${validFiles.length > 1 ? 's' : ''} to queue!`);
+        }
+
+        function getImageDimensionsFromUrl(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+                img.onerror = () => resolve({ width: 800, height: 600 });
+                img.src = url;
+            });
+        }
+
+        function updateQueueBadges() {
+            const count = imageQueue.length;
+            document.getElementById('queueCountLabel').textContent = count;
+            document.getElementById('applyAllCountLabel').textContent = count;
+            const navBadge = document.getElementById('navBadgeImgCount');
+            if (count > 0) {
+                navBadge.textContent = count;
+                navBadge.classList.remove('hidden');
+            } else {
+                navBadge.classList.add('hidden');
+            }
+            renderImageQueueStrip();
+        }
+
+        function renderImageQueueStrip() {
+            const container = document.getElementById('imageQueueContainer');
+            container.innerHTML = '';
+
+            imageQueue.forEach((item, idx) => {
+                const isSelected = idx === activeImageIndex;
+                const origKb = Math.round(item.file.size / 1024);
+                const procKb = item.processedBlob ? (item.processedBlob.size / 1024).toFixed(1) + ' KB' : 'Processing...';
+
+                const card = document.createElement('div');
+                card.className = `relative group shrink-0 w-48 p-2.5 rounded-xl border transition-all cursor-pointer flex items-center space-x-2.5 ${
+                    isSelected
+                        ? 'border-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/60 shadow-sm ring-2 ring-indigo-500/30'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-indigo-400'
+                }`;
+                card.onclick = () => selectQueueImage(idx, false);
+
+                card.innerHTML = `
+                    <img src="${item.processedUrl || item.workingUrl}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover bg-white border border-slate-200 dark:border-slate-700 shrink-0">
+                    <div class="min-w-0 flex-1">
+                        <div class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">${item.name}</div>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400">${origKb} KB → <span class="font-bold text-emerald-600 dark:text-emerald-400">${procKb}</span></div>
+                        <div class="text-[10px] text-slate-400">${item.finalW}×${item.finalH} px</div>
+                    </div>
+                    <button type="button" onclick="event.stopPropagation(); removeQueueImage(${idx});" title="Remove image" class="opacity-70 hover:opacity-100 p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-slate-400 hover:text-rose-600">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        async function selectQueueImage(index, isFirstLoad = false) {
+            if (index < 0 || index >= imageQueue.length) return;
+            if (currentPreviewTab === 'crop') {
+                switchPreviewTab('processed');
+            }
+
+            activeImageIndex = index;
+            const item = imageQueue[index];
+
+            originalFile = item.file;
+            masterUncroppedUrl = item.masterUncroppedUrl;
+            originalObjectUrl = item.workingUrl;
+
+            customNameInput.value = item.customName;
+            fileNameDisplay.textContent = `${item.name} (${index + 1} of ${imageQueue.length})`;
+
+            origSizeBadge.textContent = formatFileSize(item.file.size);
+            const ext = item.file.type.split('/')[1] ? item.file.type.split('/')[1].toUpperCase() : 'IMG';
+            origFormatBadge.textContent = ext === 'JPEG' ? 'JPG' : ext;
+
+            await new Promise((resolve) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    origWidth = originalImage.naturalWidth;
+                    origHeight = originalImage.naturalHeight;
+                    aspectRatio = origWidth / origHeight;
+
+                    if (isFirstLoad || lockAspectCheckbox.checked) {
+                        syncDimensionInputsFromPixels(origWidth, origHeight);
+                    }
+                    origDimBadge.textContent = `${origWidth} × ${origHeight} px`;
+                    resolve();
+                };
+                originalImage.src = originalObjectUrl;
+            });
+
+            if (item.processedBlob && !isFirstLoad) {
+                processedBlob = item.processedBlob;
+                processedObjectUrl = item.processedUrl;
+                finalRenderedW = item.finalW;
+                finalRenderedH = item.finalH;
+                updateStatsUI(processedBlob.size, finalRenderedW, finalRenderedH, formatSelect.value);
+                refreshPreviewImage();
+                renderImageQueueStrip();
+            } else {
+                await processCurrentImage();
+            }
+        }
+
+        function removeQueueImage(index) {
+            const removed = imageQueue.splice(index, 1)[0];
+            if (removed) {
+                if (removed.masterUncroppedUrl) URL.revokeObjectURL(removed.masterUncroppedUrl);
+                if (removed.workingUrl) URL.revokeObjectURL(removed.workingUrl);
+                if (removed.processedUrl) URL.revokeObjectURL(removed.processedUrl);
+            }
+            if (imageQueue.length === 0) {
+                resetApp();
+                return;
+            }
+            if (activeImageIndex >= imageQueue.length) {
+                activeImageIndex = imageQueue.length - 1;
+            }
+            updateQueueBadges();
+            selectQueueImage(activeImageIndex, false);
+        }
+
+        customNameInput.addEventListener('input', () => {
+            if (activeImageIndex >= 0 && imageQueue[activeImageIndex]) {
+                imageQueue[activeImageIndex].customName = customNameInput.value;
+            }
+        });
+
+        // Generate 2 Sample Images (Portrait Photo + Signature) for Batch Demo
+        function loadSampleBatchImages() {
+            // Sample 1: Portrait Photo
+            const c1 = document.createElement('canvas');
+            c1.width = 1000;
+            c1.height = 1280;
+            const ctx1 = c1.getContext('2d');
+            const grad = ctx1.createLinearGradient(0, 0, 1000, 1280);
+            grad.addColorStop(0, '#4f46e5');
+            grad.addColorStop(1, '#7c3aed');
+            ctx1.fillStyle = grad;
+            ctx1.fillRect(0, 0, 1000, 1280);
+            ctx1.fillStyle = '#ffffff';
+            ctx1.fillRect(140, 140, 720, 1000);
+            ctx1.fillStyle = '#e0e7ff';
+            ctx1.fillRect(180, 180, 640, 720);
+            ctx1.fillStyle = '#4338ca';
+            ctx1.beginPath();
+            ctx1.arc(500, 440, 125, 0, Math.PI * 2);
+            ctx1.fill();
+            ctx1.beginPath();
+            ctx1.arc(500, 840, 230, Math.PI, 0);
+            ctx1.fill();
+            ctx1.fillStyle = '#1e293b';
+            ctx1.font = 'bold 38px Inter, sans-serif';
+            ctx1.textAlign = 'center';
+            ctx1.fillText('PASSPORT PHOTO SAMPLE', 500, 1000);
+            ctx1.fillStyle = '#64748b';
+            ctx1.font = '600 24px Inter, sans-serif';
+            ctx1.fillText('Developed by Rahul Sardar Singh', 500, 1060);
+
+            // Sample 2: Applicant Signature
+            const c2 = document.createElement('canvas');
+            c2.width = 840;
+            c2.height = 360;
+            const ctx2 = c2.getContext('2d');
+            ctx2.fillStyle = '#ffffff';
+            ctx2.fillRect(0, 0, 840, 360);
+            ctx2.strokeStyle = '#cbd5e1';
+            ctx2.lineWidth = 4;
+            ctx2.strokeRect(20, 20, 800, 320);
+            ctx2.strokeStyle = '#1e3a8a';
+            ctx2.lineWidth = 8;
+            ctx2.lineCap = 'round';
+            ctx2.beginPath();
+            ctx2.moveTo(150, 220);
+            ctx2.bezierCurveTo(220, 100, 340, 260, 440, 150);
+            ctx2.bezierCurveTo(520, 90, 600, 230, 700, 160);
+            ctx2.stroke();
+            ctx2.fillStyle = '#1e3a8a';
+            ctx2.font = 'italic bold 42px serif';
+            ctx2.textAlign = 'center';
+            ctx2.fillText('Rahul Sardar Singh', 420, 200);
+
+            c1.toBlob((b1) => {
+                c2.toBlob((b2) => {
+                    const f1 = new File([b1], 'applicant-photo.jpg', { type: 'image/jpeg' });
+                    const f2 = new File([b2], 'applicant-signature.jpg', { type: 'image/jpeg' });
+                    handleMultipleUploadedFiles([f1, f2]);
+                }, 'image/jpeg', 0.95);
+            }, 'image/jpeg', 0.95);
+        }
+
+        function syncDimensionInputsFromPixels(w, h) {
+            widthInput.value = w;
+            heightInput.value = h;
+            widthCmInput.value = (w / DPI_300_CM_FACTOR).toFixed(2);
+            heightCmInput.value = (h / DPI_300_CM_FACTOR).toFixed(2);
+            scaleSlider.value = Math.min(200, Math.max(10, Math.round((w / (origWidth || w)) * 100)));
+            scaleValueDisplay.textContent = scaleSlider.value + '%';
+        }
+
+        // Exam Presets
+        function applyExamPreset(presetKey) {
+            if (!originalFile) return;
+            if (currentPreviewTab === 'crop') switchPreviewTab('processed');
+
+            setCompressionMode('target');
+            autoScaleForSize.checked = true;
+            formatSelect.value = 'image/jpeg';
+            pngWarning.classList.add('hidden');
+            updateDownloadButtonLabel();
+
+            if (presetKey === 'passport') {
+                lockAspectCheckbox.checked = false;
+                syncDimensionInputsFromPixels(350, 450);
+                setTargetPreset(45);
+                showToast('Passport Photo Preset: 3.5×4.5 cm (350×450 px), ≤ 45 KB');
+            } else if (presetKey === 'signature') {
+                lockAspectCheckbox.checked = false;
+                syncDimensionInputsFromPixels(140, 60);
+                setTargetPreset(18);
+                showToast('Signature Preset: 140×60 px, ≤ 18 KB');
+            } else if (presetKey === 'thumb') {
+                lockAspectCheckbox.checked = false;
+                syncDimensionInputsFromPixels(240, 240);
+                setTargetPreset(18);
+                showToast('Thumb Impression Preset: 240×240 px, ≤ 18 KB');
+            } else if (presetKey === 'doc100') {
+                lockAspectCheckbox.checked = true;
+                syncDimensionInputsFromPixels(origWidth, origHeight);
+                setTargetPreset(100);
+                showToast('Standard Document Preset: ≤ 100 KB');
+            } else if (presetKey === 'hq200') {
+                lockAspectCheckbox.checked = true;
+                syncDimensionInputsFromPixels(origWidth, origHeight);
+                setTargetPreset(200);
+                showToast('High Quality 200 KB Preset');
+            }
+            processCurrentImage();
+        }
+
+        function setCompressionMode(mode) {
+            compressionMode = mode;
+            const targetBtn = document.getElementById('modeTargetBtn');
+            const qualityBtn = document.getElementById('modeQualityBtn');
+            const targetControls = document.getElementById('targetSizeControls');
+            const qualityControls = document.getElementById('manualQualityControls');
+
+            if (mode === 'target') {
+                targetBtn.className = 'py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm';
+                qualityBtn.className = 'py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+                targetControls.classList.remove('hidden');
+                qualityControls.classList.add('hidden');
+            } else {
+                qualityBtn.className = 'py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm';
+                targetBtn.className = 'py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+                qualityControls.classList.remove('hidden');
+                targetControls.classList.add('hidden');
+            }
+            scheduleLiveProcess();
+        }
+
+        function setTargetPreset(kb) {
+            targetKbInput.value = kb;
+            document.querySelectorAll('.preset-kb-btn').forEach(btn => {
+                if (btn.textContent.trim() === `${kb} KB`) {
+                    btn.className = 'preset-kb-btn py-1.5 px-1.5 text-xs font-semibold rounded-lg border border-indigo-500 bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 transition-colors';
+                } else {
+                    btn.className = 'preset-kb-btn py-1.5 px-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-indigo-400 transition-colors';
+                }
+            });
+            scheduleLiveProcess();
+        }
+
+        function setResizeMode(mode) {
+            resizeMode = mode;
+            const pxBtn = document.getElementById('resizePixelsBtn');
+            const pctBtn = document.getElementById('resizePercentBtn');
+            const cmBtn = document.getElementById('resizeCmBtn');
+
+            const pxControls = document.getElementById('pixelResizeControls');
+            const pctControls = document.getElementById('percentResizeControls');
+            const cmControls = document.getElementById('cmResizeControls');
+
+            const activeClass = 'py-2 px-2 rounded-lg text-xs font-semibold transition-all bg-white dark:bg-slate-900 text-violet-600 dark:text-violet-400 shadow-sm';
+            const inactiveClass = 'py-2 px-2 rounded-lg text-xs font-semibold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+
+            pxBtn.className = mode === 'pixels' ? activeClass : inactiveClass;
+            pctBtn.className = mode === 'percent' ? activeClass : inactiveClass;
+            cmBtn.className = mode === 'cm' ? activeClass : inactiveClass;
+
+            pxControls.classList.toggle('hidden', mode !== 'pixels');
+            pctControls.classList.toggle('hidden', mode !== 'percent');
+            cmControls.classList.toggle('hidden', mode !== 'cm');
+
+            scheduleLiveProcess();
+        }
+
+        function setScalePreset(pct) {
+            scaleSlider.value = pct;
+            scaleValueDisplay.textContent = pct + '%';
+            const w = Math.max(10, Math.round(origWidth * (pct / 100)));
+            const h = Math.max(10, Math.round(origHeight * (pct / 100)));
+            syncDimensionInputsFromPixels(w, h);
+            scheduleLiveProcess();
+        }
+
+        function resetDimensionsToOriginal() {
+            lockAspectCheckbox.checked = true;
+            syncDimensionInputsFromPixels(origWidth, origHeight);
+            scheduleLiveProcess();
+            showToast('Dimensions reset to original size');
+        }
+
+        // Dimension Input Listeners
+        widthInput.addEventListener('input', () => {
+            const w = parseInt(widthInput.value, 10);
+            if (w > 0) {
+                if (lockAspectCheckbox.checked) {
+                    const h = Math.max(1, Math.round(w / aspectRatio));
+                    heightInput.value = h;
+                    heightCmInput.value = (h / DPI_300_CM_FACTOR).toFixed(2);
+                }
+                widthCmInput.value = (w / DPI_300_CM_FACTOR).toFixed(2);
+                scheduleLiveProcess();
+            }
+        });
+
+        heightInput.addEventListener('input', () => {
+            const h = parseInt(heightInput.value, 10);
+            if (h > 0) {
+                if (lockAspectCheckbox.checked) {
+                    const w = Math.max(1, Math.round(h * aspectRatio));
+                    widthInput.value = w;
+                    widthCmInput.value = (w / DPI_300_CM_FACTOR).toFixed(2);
+                }
+                heightCmInput.value = (h / DPI_300_CM_FACTOR).toFixed(2);
+                scheduleLiveProcess();
+            }
+        });
+
+        widthCmInput.addEventListener('input', () => {
+            const wCm = parseFloat(widthCmInput.value);
+            if (wCm > 0) {
+                const wPx = Math.max(10, Math.round(wCm * DPI_300_CM_FACTOR));
+                widthInput.value = wPx;
+                if (lockAspectCheckbox.checked) {
+                    const hPx = Math.max(10, Math.round(wPx / aspectRatio));
+                    heightInput.value = hPx;
+                    heightCmInput.value = (hPx / DPI_300_CM_FACTOR).toFixed(2);
+                }
+                scheduleLiveProcess();
+            }
+        });
+
+        heightCmInput.addEventListener('input', () => {
+            const hCm = parseFloat(heightCmInput.value);
+            if (hCm > 0) {
+                const hPx = Math.max(10, Math.round(hCm * DPI_300_CM_FACTOR));
+                heightInput.value = hPx;
+                if (lockAspectCheckbox.checked) {
+                    const wPx = Math.max(10, Math.round(hPx * aspectRatio));
+                    widthInput.value = wPx;
+                    widthCmInput.value = (wPx / DPI_300_CM_FACTOR).toFixed(2);
+                }
+                scheduleLiveProcess();
+            }
+        });
+
+        lockAspectCheckbox.addEventListener('change', () => {
+            if (lockAspectCheckbox.checked) {
+                const w = parseInt(widthInput.value, 10) || origWidth;
+                const h = Math.max(1, Math.round(w / aspectRatio));
+                syncDimensionInputsFromPixels(w, h);
+                scheduleLiveProcess();
+            }
+        });
+
+        scaleSlider.addEventListener('input', () => {
+            const pct = parseInt(scaleSlider.value, 10);
+            scaleValueDisplay.textContent = pct + '%';
+            const w = Math.max(10, Math.round(origWidth * (pct / 100)));
+            const h = Math.max(10, Math.round(origHeight * (pct / 100)));
+            widthInput.value = w;
+            heightInput.value = h;
+            widthCmInput.value = (w / DPI_300_CM_FACTOR).toFixed(2);
+            heightCmInput.value = (h / DPI_300_CM_FACTOR).toFixed(2);
+            scheduleLiveProcess();
+        });
+
+        qualitySlider.addEventListener('input', () => {
+            qualityValueDisplay.textContent = qualitySlider.value + '%';
+            scheduleLiveProcess();
+        });
+
+        targetKbInput.addEventListener('input', () => scheduleLiveProcess());
+        autoScaleForSize.addEventListener('change', () => scheduleLiveProcess());
+
+        formatSelect.addEventListener('change', () => {
+            pngWarning.classList.toggle('hidden', formatSelect.value !== 'image/png');
+            updateDownloadButtonLabel();
+            scheduleLiveProcess();
+        });
+
+        function updateDownloadButtonLabel() {
+            if (formatSelect.value === 'application/pdf') {
+                downloadBtnText.textContent = 'Download Selected PDF';
+            } else {
+                const ext = formatSelect.value.split('/')[1].toUpperCase();
+                downloadBtnText.textContent = `Download Selected (${ext === 'JPEG' ? 'JPG' : ext})`;
+            }
+        }
+
+        function scheduleLiveProcess() {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                processCurrentImage();
+            }, 260);
+        }
+
+        // Cropper.js Functions
+        function initCropperMode() {
+            if (cropperInstance) {
+                cropperInstance.destroy();
+                cropperInstance = null;
+            }
+            flipScaleX = 1;
+            flipScaleY = 1;
+            cropperImageElement.src = originalObjectUrl;
+            cropperInstance = new Cropper(cropperImageElement, {
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 0.9,
+                responsive: true,
+                background: false,
+            });
+        }
+
+        function destroyCropperMode() {
+            if (cropperInstance) {
+                cropperInstance.destroy();
+                cropperInstance = null;
+            }
+        }
+
+        function rotateCrop(deg) {
+            if (cropperInstance) cropperInstance.rotate(deg);
+        }
+        function flipCrop(dir) {
+            if (!cropperInstance) return;
+            if (dir === 'h') {
+                flipScaleX = -flipScaleX;
+                cropperInstance.scaleX(flipScaleX);
+            } else {
+                flipScaleY = -flipScaleY;
+                cropperInstance.scaleY(flipScaleY);
+            }
+        }
+        function setCropRatio(ratio) {
+            if (cropperInstance) cropperInstance.setAspectRatio(ratio);
+        }
+
+        function applyCropChanges() {
+            if (!cropperInstance || activeImageIndex < 0) return;
+            const croppedCanvas = cropperInstance.getCroppedCanvas({
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
+            });
+            if (!croppedCanvas) return;
+
+            croppedCanvas.toBlob((blob) => {
+                const item = imageQueue[activeImageIndex];
+                if (item.workingUrl && item.workingUrl !== item.masterUncroppedUrl) {
+                    URL.revokeObjectURL(item.workingUrl);
+                }
+                const newUrl = URL.createObjectURL(blob);
+                item.workingUrl = newUrl;
+                originalObjectUrl = newUrl;
+
+                destroyCropperMode();
+                switchPreviewTab('processed');
+                selectQueueImage(activeImageIndex, true);
+                showToast('Crop & rotation applied to selected image!');
+            }, 'image/jpeg', 0.98);
+        }
+
+        function revertToUncroppedMaster() {
+            if (activeImageIndex < 0) return;
+            const item = imageQueue[activeImageIndex];
+            item.workingUrl = item.masterUncroppedUrl;
+            originalObjectUrl = item.masterUncroppedUrl;
+            destroyCropperMode();
+            switchPreviewTab('processed');
+            selectQueueImage(activeImageIndex, true);
+            showToast('Restored original uncropped image');
+        }
+
+        // Core Canvas Compression Helpers
+        function canvasToBlobAsync(canvas, mimeType, quality) {
+            return new Promise((resolve) => {
+                canvas.toBlob((blob) => resolve(blob), mimeType, quality);
+            });
+        }
+
+        function drawImageOnCanvas(img, targetW, targetH, mimeType) {
+            const canvas = document.createElement('canvas');
+            canvas.width = targetW;
+            canvas.height = targetH;
+            const ctx = canvas.getContext('2d');
+            if (mimeType === 'image/jpeg') {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, targetW, targetH);
+            }
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+            return canvas;
+        }
+
+        // Reusable Engine to Compress Any Image Element According to Current Settings
+        async function compressSingleImageElement(imgEl, desiredW, desiredH) {
+            let targetW = Math.max(10, Math.min(10000, desiredW));
+            let targetH = Math.max(10, Math.min(10000, desiredH));
+
+            const selectedFormat = formatSelect.value;
+            const canvasMimeType = selectedFormat === 'application/pdf' ? 'image/jpeg' : selectedFormat;
+
+            let finalBlob = null;
+            let finalW = targetW;
+            let finalH = targetH;
+
+            if (compressionMode === 'quality') {
+                const quality = parseInt(qualitySlider.value, 10) / 100;
+                const canvas = drawImageOnCanvas(imgEl, finalW, finalH, canvasMimeType);
+                finalBlob = await canvasToBlobAsync(canvas, canvasMimeType, quality);
+            } else {
+                const targetBytes = Math.max(5, parseFloat(targetKbInput.value) || 200) * 1024;
+                let canvas = drawImageOnCanvas(imgEl, finalW, finalH, canvasMimeType);
+
+                if (canvasMimeType === 'image/png') {
+                    finalBlob = await canvasToBlobAsync(canvas, canvasMimeType);
+                    let scaleStep = 0.88;
+                    while (finalBlob.size > targetBytes && autoScaleForSize.checked && finalW > 48 && finalH > 48) {
+                        finalW = Math.max(32, Math.round(finalW * scaleStep));
+                        finalH = Math.max(32, Math.round(finalH * scaleStep));
+                        canvas = drawImageOnCanvas(imgEl, finalW, finalH, canvasMimeType);
+                        finalBlob = await canvasToBlobAsync(canvas, canvasMimeType);
+                    }
+                } else {
+                    let maxQualityBlob = await canvasToBlobAsync(canvas, canvasMimeType, 0.95);
+                    if (maxQualityBlob.size <= targetBytes) {
+                        finalBlob = maxQualityBlob;
+                    } else {
+                        let low = 0.04;
+                        let high = 0.95;
+                        let bestFittingBlob = null;
+
+                        for (let i = 0; i < 7; i++) {
+                            const mid = (low + high) / 2;
+                            const testBlob = await canvasToBlobAsync(canvas, canvasMimeType, mid);
+                            if (testBlob.size <= targetBytes) {
+                                bestFittingBlob = testBlob;
+                                low = mid;
+                            } else {
+                                high = mid;
+                            }
+                        }
+
+                        if (bestFittingBlob) {
+                            finalBlob = bestFittingBlob;
+                        } else {
+                            finalBlob = await canvasToBlobAsync(canvas, canvasMimeType, 0.04);
+                            if (autoScaleForSize.checked) {
+                                let attempts = 0;
+                                while (finalBlob.size > targetBytes && finalW > 40 && finalH > 40 && attempts < 10) {
+                                    attempts++;
+                                    const ratio = Math.min(0.85, Math.max(0.5, Math.sqrt(targetBytes / finalBlob.size) * 0.9));
+                                    finalW = Math.max(32, Math.round(finalW * ratio));
+                                    finalH = Math.max(32, Math.round(finalH * ratio));
+                                    canvas = drawImageOnCanvas(imgEl, finalW, finalH, canvasMimeType);
+
+                                    let sLow = 0.1, sHigh = 0.85, sBest = null;
+                                    for (let j = 0; j < 4; j++) {
+                                        const sMid = (sLow + sHigh) / 2;
+                                        const sBlob = await canvasToBlobAsync(canvas, canvasMimeType, sMid);
+                                        if (sBlob.size <= targetBytes) {
+                                            sBest = sBlob;
+                                            sLow = sMid;
+                                        } else {
+                                            sHigh = sMid;
+                                        }
+                                    }
+                                    finalBlob = sBest || await canvasToBlobAsync(canvas, canvasMimeType, 0.1);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return { blob: finalBlob, width: finalW, height: finalH };
+        }
+
+        // Process Selected Image
+        async function processCurrentImage() {
+            if (activeImageIndex < 0 || !originalImage.src) return;
+            processingOverlay.classList.remove('hidden');
+            document.getElementById('processingOverlayTitle').textContent = 'Optimizing Selected Image...';
+            await new Promise(r => setTimeout(r, 20));
+
+            try {
+                const targetW = parseInt(widthInput.value, 10) || origWidth;
+                const targetH = parseInt(heightInput.value, 10) || origHeight;
+                const result = await compressSingleImageElement(originalImage, targetW, targetH);
+
+                processedBlob = result.blob;
+                finalRenderedW = result.width;
+                finalRenderedH = result.height;
+
+                const item = imageQueue[activeImageIndex];
+                if (item.processedUrl) URL.revokeObjectURL(item.processedUrl);
+                processedObjectUrl = URL.createObjectURL(processedBlob);
+
+                item.processedBlob = processedBlob;
+                item.processedUrl = processedObjectUrl;
+                item.finalW = finalRenderedW;
+                item.finalH = finalRenderedH;
+
+                updateStatsUI(processedBlob.size, finalRenderedW, finalRenderedH, formatSelect.value);
+                refreshPreviewImage();
+                renderImageQueueStrip();
+            } catch (err) {
+                console.error(err);
+                showToast('Error optimizing image.');
+            } finally {
+                processingOverlay.classList.add('hidden');
+            }
+        }
+
+        // Batch Process All Images in Queue
+        async function processAllImagesInQueue(silent = false) {
+            if (imageQueue.length === 0) return;
+            processingOverlay.classList.remove('hidden');
+
+            try {
+                for (let i = 0; i < imageQueue.length; i++) {
+                    const item = imageQueue[i];
+                    document.getElementById('processingOverlayTitle').textContent = `Batch Optimizing ${i + 1} of ${imageQueue.length}...`;
+                    await new Promise(r => setTimeout(r, 15));
+
+                    const imgEl = await new Promise((res) => {
+                        const im = new Image();
+                        im.onload = () => res(im);
+                        im.src = item.workingUrl;
+                    });
+
+                    let desiredW, desiredH;
+                    if (resizeMode === 'percent') {
+                        const pct = parseInt(scaleSlider.value, 10) || 100;
+                        desiredW = Math.round(imgEl.naturalWidth * (pct / 100));
+                        desiredH = Math.round(imgEl.naturalHeight * (pct / 100));
+                    } else if (lockAspectCheckbox.checked) {
+                        desiredW = parseInt(widthInput.value, 10) || imgEl.naturalWidth;
+                        desiredH = Math.round(desiredW / (imgEl.naturalWidth / imgEl.naturalHeight));
+                    } else {
+                        desiredW = parseInt(widthInput.value, 10) || imgEl.naturalWidth;
+                        desiredH = parseInt(heightInput.value, 10) || imgEl.naturalHeight;
+                    }
+
+                    const result = await compressSingleImageElement(imgEl, desiredW, desiredH);
+                    if (item.processedUrl) URL.revokeObjectURL(item.processedUrl);
+                    item.processedBlob = result.blob;
+                    item.processedUrl = URL.createObjectURL(result.blob);
+                    item.finalW = result.width;
+                    item.finalH = result.height;
+                }
+
+                // Sync active item UI
+                const currentItem = imageQueue[activeImageIndex];
+                if (currentItem && currentItem.processedBlob) {
+                    processedBlob = currentItem.processedBlob;
+                    processedObjectUrl = currentItem.processedUrl;
+                    finalRenderedW = currentItem.finalW;
+                    finalRenderedH = currentItem.finalH;
+                    updateStatsUI(processedBlob.size, finalRenderedW, finalRenderedH, formatSelect.value);
+                    refreshPreviewImage();
+                }
+                renderImageQueueStrip();
+                if (!silent) {
+                    showToast(`Optimized all ${imageQueue.length} images!`);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error during batch optimization.');
+            } finally {
+                processingOverlay.classList.add('hidden');
+            }
+        }
+
+        function updateStatsUI(newByteSize, finalW, finalH, selectedFormat) {
+            newSizeBadge.textContent = formatFileSize(newByteSize);
+            let extLabel = 'JPG';
+            if (selectedFormat === 'image/png') extLabel = 'PNG';
+            else if (selectedFormat === 'image/webp') extLabel = 'WEBP';
+            else if (selectedFormat === 'application/pdf') extLabel = 'PDF';
+
+            newFormatBadge.textContent = extLabel;
+            const wCm = (finalW / DPI_300_CM_FACTOR).toFixed(1);
+            const hCm = (finalH / DPI_300_CM_FACTOR).toFixed(1);
+            newDimBadge.textContent = `${finalW} × ${finalH} px (${wCm}×${hCm} cm)`;
+
+            const origBytes = originalFile ? originalFile.size : newByteSize;
+            const diffPercent = Math.round(((origBytes - newByteSize) / origBytes) * 100);
+
+            if (diffPercent > 0) {
+                savingsBadge.textContent = `Saved ${diffPercent}%`;
+                savingsBadge.className = 'text-[11px] font-bold bg-emerald-600 text-white px-2.5 py-0.5 rounded-full';
+            } else if (diffPercent === 0) {
+                savingsBadge.textContent = 'Same Size';
+                savingsBadge.className = 'text-[11px] font-bold bg-slate-600 text-white px-2.5 py-0.5 rounded-full';
+            } else {
+                savingsBadge.textContent = `+${Math.abs(diffPercent)}%`;
+                savingsBadge.className = 'text-[11px] font-bold bg-amber-600 text-white px-2.5 py-0.5 rounded-full';
+            }
+        }
+
+        function switchPreviewTab(tab) {
+            currentPreviewTab = tab;
+            const procBtn = document.getElementById('viewProcessedBtn');
+            const origBtn = document.getElementById('viewOriginalBtn');
+            const cropBtn = document.getElementById('viewCropBtn');
+
+            const activeClass = 'px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm transition-all';
+            const inactiveClass = 'px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all';
+
+            procBtn.className = tab === 'processed' ? activeClass : inactiveClass;
+            origBtn.className = tab === 'original' ? activeClass : inactiveClass;
+            cropBtn.className = tab === 'crop'
+                ? 'px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm flex items-center space-x-1 transition-all'
+                : 'px-3 py-1.5 rounded-lg text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center space-x-1 transition-all';
+
+            if (tab === 'crop') {
+                previewImageElement.classList.add('hidden');
+                previewBadgePill.classList.add('hidden');
+                cropperWrapper.classList.remove('hidden');
+                cropToolbar.classList.remove('hidden');
+                initCropperMode();
+            } else {
+                destroyCropperMode();
+                cropperWrapper.classList.add('hidden');
+                cropToolbar.classList.add('hidden');
+                previewImageElement.classList.remove('hidden');
+                previewBadgePill.classList.remove('hidden');
+                currentViewLabel.textContent = tab === 'processed' ? 'Compressed Output' : 'Original Photo';
+                refreshPreviewImage();
+            }
+        }
+
+        function refreshPreviewImage() {
+            if (currentPreviewTab === 'crop') return;
+            if (currentPreviewTab === 'processed' && processedObjectUrl) {
+                previewImageElement.src = processedObjectUrl;
+            } else if (originalObjectUrl) {
+                previewImageElement.src = originalObjectUrl;
+            }
+        }
+
+        function getCleanBaseName() {
+            const raw = (customNameInput.value || '').trim();
+            if (raw.length > 0) return raw.replace(/\.[^/.]+$/, '');
+            return originalFile ? originalFile.name.replace(/\.[^/.]+$/, '') + '-resized' : 'rahul-resized-image';
+        }
+
+        function downloadProcessedOutput() {
+            if (formatSelect.value === 'application/pdf') {
+                exportImageAsPDF();
+                return;
+            }
+            if (!processedBlob || !processedObjectUrl) {
+                showToast('Please wait for the image to finish processing.');
+                return;
+            }
+
+            const mimeType = formatSelect.value;
+            let ext = 'jpg';
+            if (mimeType === 'image/png') ext = 'png';
+            if (mimeType === 'image/webp') ext = 'webp';
+
+            const kbSize = Math.round(processedBlob.size / 1024);
+            const downloadFileName = `${getCleanBaseName()}-${kbSize}KB.${ext}`;
+
+            const link = document.createElement('a');
+            link.href = processedObjectUrl;
+            link.download = downloadFileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast(`Downloaded ${downloadFileName}!`);
+        }
+
+        // Batch Download All Processed Images as a ZIP Archive
+        async function downloadAllImagesAsZip() {
+            if (imageQueue.length === 0) return;
+            await processAllImagesInQueue(true);
+
+            const zip = new JSZip();
+            const mimeType = formatSelect.value;
+            let ext = 'jpg';
+            if (mimeType === 'image/png') ext = 'png';
+            if (mimeType === 'image/webp') ext = 'webp';
+
+            imageQueue.forEach((item, idx) => {
+                if (item.processedBlob) {
+                    const kb = Math.round(item.processedBlob.size / 1024);
+                    const base = (item.customName || `image-${idx + 1}`).replace(/\.[^/.]+$/, '');
+                    zip.file(`${base}-${kb}KB.${ext}`, item.processedBlob);
+                }
+            });
+
+            showToast('Building ZIP archive...');
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rahul-resized-images-${imageQueue.length}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`Downloaded ZIP with ${imageQueue.length} optimized images!`);
+        }
+
+        // Export Selected Image to PDF
+        async function exportImageAsPDF() {
+            if (!processedBlob) return;
+            const { jsPDF } = window.jspdf;
+            const dataUrl = await blobToDataURL(processedBlob);
+            const isLandscape = finalRenderedW > finalRenderedH;
+            const pdf = new jsPDF({
+                orientation: isLandscape ? 'landscape' : 'portrait',
+                unit: 'mm',
+                format: 'a4',
+                compress: true
+            });
+
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 12;
+            const maxW = pageWidth - margin * 2;
+            const maxH = pageHeight - margin * 2;
+
+            let imgWidthMm = (finalRenderedW / 300) * 25.4;
+            let imgHeightMm = (finalRenderedH / 300) * 25.4;
+            if (imgWidthMm > maxW || imgHeightMm > maxH) {
+                const ratio = Math.min(maxW / imgWidthMm, maxH / imgHeightMm);
+                imgWidthMm *= ratio;
+                imgHeightMm *= ratio;
+            }
+            const x = (pageWidth - imgWidthMm) / 2;
+            const y = (pageHeight - imgHeightMm) / 2;
+            const formatType = processedBlob.type === 'image/png' ? 'PNG' : 'JPEG';
+            pdf.addImage(dataUrl, formatType, x, y, imgWidthMm, imgHeightMm, undefined, 'FAST');
+            pdf.save(`${getCleanBaseName()}.pdf`);
+            showToast('Saved PDF Document!');
+        }
+
+        // Merge All Queue Images into a Single Multi-Page PDF
+        async function mergeAllQueueImagesToPDF() {
+            if (imageQueue.length === 0) return;
+            await processAllImagesInQueue(true);
+
+            const { jsPDF } = window.jspdf;
+            let pdf = null;
+
+            for (let i = 0; i < imageQueue.length; i++) {
+                const item = imageQueue[i];
+                const dataUrl = await blobToDataURL(item.processedBlob);
+                const isLandscape = item.finalW > item.finalH;
+                const orient = isLandscape ? 'landscape' : 'portrait';
+
+                if (i === 0) {
+                    pdf = new jsPDF({ orientation: orient, unit: 'mm', format: 'a4', compress: true });
+                } else {
+                    pdf.addPage('a4', orient);
+                }
+
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = 10;
+                const maxW = pageWidth - margin * 2;
+                const maxH = pageHeight - margin * 2;
+
+                let wMm = (item.finalW / 300) * 25.4;
+                let hMm = (item.finalH / 300) * 25.4;
+                if (wMm > maxW || hMm > maxH) {
+                    const r = Math.min(maxW / wMm, maxH / hMm);
+                    wMm *= r;
+                    hMm *= r;
+                }
+                const x = (pageWidth - wMm) / 2;
+                const y = (pageHeight - hMm) / 2;
+                const fmt = item.processedBlob.type === 'image/png' ? 'PNG' : 'JPEG';
+                pdf.addImage(dataUrl, fmt, x, y, wMm, hMm, undefined, 'FAST');
+            }
+
+            pdf.save(`rahul-merged-${imageQueue.length}-pages.pdf`);
+            showToast(`Merged ${imageQueue.length} images into 1 PDF!`);
+        }
+
+        function blobToDataURL(blob) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function resetApp() {
+            destroyCropperMode();
+            imageQueue.forEach(item => {
+                if (item.masterUncroppedUrl) URL.revokeObjectURL(item.masterUncroppedUrl);
+                if (item.workingUrl) URL.revokeObjectURL(item.workingUrl);
+                if (item.processedUrl) URL.revokeObjectURL(item.processedUrl);
+            });
+            imageQueue = [];
+            activeImageIndex = -1;
+            originalFile = null;
+            processedBlob = null;
+            fileInput.value = '';
+
+            updateQueueBadges();
+            switchPreviewTab('processed');
+            workspaceSection.classList.add('hidden');
+            uploadSection.classList.remove('hidden');
+        }
+
+        // ============================================================================
+        // 4. TOOL 2: PDF FILE SIZE REDUCER (SMART TARGET KB PDF COMPRESSOR)
+        // ============================================================================
+        let currentPdfCompressFile = null;
+        let currentPdfDoc = null;
+        let compressedPdfBlob = null;
+
+        const pdfCompressInput = document.getElementById('pdfCompressInput');
+        const pdfCompressDropZone = document.getElementById('pdfCompressDropZone');
+
+        pdfCompressDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            pdfCompressDropZone.classList.add('border-rose-600', 'bg-rose-50/30');
+        });
+        pdfCompressDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            pdfCompressDropZone.classList.remove('border-rose-600', 'bg-rose-50/30');
+        });
+        pdfCompressDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            pdfCompressDropZone.classList.remove('border-rose-600', 'bg-rose-50/30');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handlePdfForCompression(e.dataTransfer.files[0]);
+            }
+        });
+        pdfCompressInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handlePdfForCompression(e.target.files[0]);
+                pdfCompressInput.value = '';
+            }
+        });
+
+        function setPdfTargetPreset(kb) {
+            document.getElementById('pdfTargetKbInput').value = kb;
+            document.querySelectorAll('.pdf-preset-btn').forEach(btn => {
+                const label = kb === 1000 ? '1 MB' : `${kb} KB`;
+                if (btn.textContent.trim() === label) {
+                    btn.className = 'pdf-preset-btn py-1.5 text-xs font-semibold rounded-lg border border-rose-500 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300';
+                } else {
+                    btn.className = 'pdf-preset-btn py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-rose-400';
+                }
+            });
+            if (currentPdfDoc) compressLoadedPdf();
+        }
+
+        async function handlePdfForCompression(file) {
+            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                showToast('Please select a valid PDF document.');
+                return;
+            }
+            currentPdfCompressFile = file;
+            document.getElementById('pdfOrigSizeDisplay').textContent = formatFileSize(file.size);
+            document.getElementById('pdfOrigNameDisplay').textContent = file.name;
+            document.getElementById('pdfCompressWorkspace').classList.remove('hidden');
+
+            const arrayBuffer = await file.arrayBuffer();
+            currentPdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            document.getElementById('pdfPageCountBadge').textContent = `${currentPdfDoc.numPages} Page${currentPdfDoc.numPages > 1 ? 's' : ''}`;
+
+            await compressLoadedPdf();
+        }
+
+        async function compressLoadedPdf() {
+            if (!currentPdfDoc) return;
+            const spinner = document.getElementById('pdfCompressSpinner');
+            const statusText = document.getElementById('pdfCompressStatusText');
+            spinner.classList.remove('hidden');
+
+            try {
+                const numPages = currentPdfDoc.numPages;
+                const targetKb = Math.max(20, parseFloat(document.getElementById('pdfTargetKbInput').value) || 200);
+                const targetBytes = targetKb * 1024;
+                const resMode = document.getElementById('pdfResolutionMode').value;
+
+                // Determine starting render scale
+                let renderScale = resMode === 'auto' ? 1.35 : parseFloat(resMode);
+                if (resMode === 'auto' && targetKb / numPages < 45) {
+                    renderScale = 0.95;
+                }
+
+                // Render all PDF pages to canvases once at chosen scale
+                const pageCanvases = [];
+                const previewGrid = document.getElementById('pdfCompressedPagesGrid');
+                previewGrid.innerHTML = '';
+
+                for (let p = 1; p <= numPages; p++) {
+                    statusText.textContent = `Rendering Page ${p} of ${numPages}...`;
+                    const page = await currentPdfDoc.getPage(p);
+                    const viewport = page.getViewport({ scale: renderScale });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                    pageCanvases.push(canvas);
+                }
+
+                // Binary search JPEG quality to make rebuilt PDF <= targetBytes
+                statusText.textContent = `Optimizing PDF to ≤ ${targetKb} KB...`;
+                let lowQ = 0.08, highQ = 0.92;
+                let bestPdfBlob = null;
+                let usedQuality = 0.75;
+
+                const buildPdfAtQuality = (q, scaleDown = 1.0) => {
+                    const { jsPDF } = window.jspdf;
+                    let pdf = null;
+                    for (let i = 0; i < pageCanvases.length; i++) {
+                        let c = pageCanvases[i];
+                        if (scaleDown < 0.99) {
+                            const sc = document.createElement('canvas');
+                            sc.width = Math.max(100, Math.round(c.width * scaleDown));
+                            sc.height = Math.max(100, Math.round(c.height * scaleDown));
+                            const sctx = sc.getContext('2d');
+                            sctx.fillStyle = '#FFFFFF';
+                            sctx.fillRect(0, 0, sc.width, sc.height);
+                            sctx.drawImage(c, 0, 0, sc.width, sc.height);
+                            c = sc;
+                        }
+                        const isLand = c.width > c.height;
+                        const orient = isLand ? 'landscape' : 'portrait';
+                        if (i === 0) {
+                            pdf = new jsPDF({ orientation: orient, unit: 'pt', format: [c.width, c.height], compress: true });
+                        } else {
+                            pdf.addPage([c.width, c.height], orient);
+                        }
+                        const jpegDataUrl = c.toDataURL('image/jpeg', q);
+                        pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, c.width, c.height, undefined, 'FAST');
+                    }
+                    return pdf.output('blob');
+                };
+
+                for (let step = 0; step < 6; step++) {
+                    const midQ = (lowQ + highQ) / 2;
+                    const testBlob = buildPdfAtQuality(midQ, 1.0);
+                    if (testBlob.size <= targetBytes) {
+                        bestPdfBlob = testBlob;
+                        usedQuality = midQ;
+                        lowQ = midQ;
+                    } else {
+                        highQ = midQ;
+                    }
+                }
+
+                // If still larger than targetBytes and in auto mode, scale down dimensions progressively
+                if (!bestPdfBlob) {
+                    let scaleFactor = 0.78;
+                    for (let attempt = 0; attempt < 4; attempt++) {
+                        const testBlob = buildPdfAtQuality(0.35, scaleFactor);
+                        if (testBlob.size <= targetBytes) {
+                            bestPdfBlob = testBlob;
+                            usedQuality = 0.35;
+                            break;
+                        }
+                        scaleFactor *= 0.75;
+                    }
+                    if (!bestPdfBlob) {
+                        bestPdfBlob = buildPdfAtQuality(0.15, 0.5);
+                        usedQuality = 0.15;
+                    }
+                }
+
+                compressedPdfBlob = bestPdfBlob;
+                document.getElementById('pdfNewSizeDisplay').textContent = formatFileSize(compressedPdfBlob.size);
+                document.getElementById('pdfQualitySummary').textContent = `${numPages} Page(s) • Quality ${Math.round(usedQuality * 100)}%`;
+
+                const origBytes = currentPdfCompressFile.size;
+                const savedPct = Math.round(((origBytes - compressedPdfBlob.size) / origBytes) * 100);
+                const badge = document.getElementById('pdfSavedBadge');
+                if (savedPct > 0) {
+                    badge.textContent = `Saved ${savedPct}%`;
+                    badge.className = 'text-[11px] font-bold bg-emerald-600 text-white px-2.5 py-0.5 rounded-full';
+                } else {
+                    badge.textContent = `Target ≤ ${targetKb} KB`;
+                    badge.className = 'text-[11px] font-bold bg-indigo-600 text-white px-2.5 py-0.5 rounded-full';
+                }
+
+                // Show thumbnails
+                pageCanvases.forEach((c, idx) => {
+                    const thumbUrl = c.toDataURL('image/jpeg', 0.6);
+                    const div = document.createElement('div');
+                    div.className = 'p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-center';
+                    div.innerHTML = `
+                        <img src="${thumbUrl}" class="w-full h-32 object-contain rounded border bg-white mb-1">
+                        <span class="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Page ${idx + 1}</span>
+                    `;
+                    previewGrid.appendChild(div);
+                });
+
+                showToast(`PDF compressed to ${formatFileSize(compressedPdfBlob.size)}!`);
+            } catch (err) {
+                console.error(err);
+                showToast('Error compressing PDF document.');
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function downloadCompressedPdfFile() {
+            if (!compressedPdfBlob) return;
+            const kb = Math.round(compressedPdfBlob.size / 1024);
+            const base = currentPdfCompressFile ? currentPdfCompressFile.name.replace(/\.pdf$/i, '') : 'document';
+            const url = URL.createObjectURL(compressedPdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${base}-compressed-${kb}KB.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Downloaded Compressed PDF!');
+        }
+
+        async function generateSamplePdfForCompression() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+            for (let p = 1; p <= 2; p++) {
+                if (p > 1) pdf.addPage();
+                const c = document.createElement('canvas');
+                c.width = 900;
+                c.height = 1200;
+                const ctx = c.getContext('2d');
+                ctx.fillStyle = p === 1 ? '#eef2ff' : '#ecfdf5';
+                ctx.fillRect(0, 0, 900, 1200);
+                ctx.fillStyle = '#1e1b4b';
+                ctx.font = 'bold 42px Inter, sans-serif';
+                ctx.fillText(`OFFICIAL CERTIFICATE - PAGE ${p}`, 120, 160);
+                ctx.fillStyle = '#475569';
+                ctx.font = '24px Inter, sans-serif';
+                for (let l = 0; l < 14; l++) {
+                    ctx.fillText(`Sample scanned document content line ${l + 1} for PDF size reduction test.`, 120, 260 + l * 55);
+                }
+                pdf.addImage(c.toDataURL('image/jpeg', 0.98), 'JPEG', 0, 0, 595, 842);
+            }
+            const blob = pdf.output('blob');
+            const sampleFile = new File([blob], 'sample-certificate-2pages.pdf', { type: 'application/pdf' });
+            handlePdfForCompression(sampleFile);
+        }
+
+        // ============================================================================
+        // 5. TOOL 3: PDF TO IMAGE CONVERTER (EXTRACT PAGES TO HD JPG/PNG/WEBP)
+        // ============================================================================
+        let pdfExtractDoc = null;
+        let pdfExtractFileName = 'document';
+        let extractedPageItems = []; // { pageNum, blob, url, width, height, ext }
+
+        const pdfToImgInput = document.getElementById('pdfToImgInput');
+        const pdfToImgDropZone = document.getElementById('pdfToImgDropZone');
+
+        pdfToImgDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            pdfToImgDropZone.classList.add('border-emerald-600', 'bg-emerald-50/30');
+        });
+        pdfToImgDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            pdfToImgDropZone.classList.remove('border-emerald-600', 'bg-emerald-50/30');
+        });
+        pdfToImgDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            pdfToImgDropZone.classList.remove('border-emerald-600', 'bg-emerald-50/30');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handlePdfForExtraction(e.dataTransfer.files[0]);
+            }
+        });
+        pdfToImgInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                handlePdfForExtraction(e.target.files[0]);
+                pdfToImgInput.value = '';
+            }
+        });
+
+        async function handlePdfForExtraction(file) {
+            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                showToast('Please select a valid PDF file.');
+                return;
+            }
+            pdfExtractFileName = file.name.replace(/\.pdf$/i, '');
+            const arrayBuffer = await file.arrayBuffer();
+            pdfExtractDoc = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            document.getElementById('pdfToImgWorkspace').classList.remove('hidden');
+            await reRenderPdfToImages();
+        }
+
+        async function reRenderPdfToImages() {
+            if (!pdfExtractDoc) return;
+            const grid = document.getElementById('pdfExtractedPagesGrid');
+            grid.innerHTML = '<div class="col-span-full text-center py-8 text-sm font-bold text-slate-500">Extracting high-resolution pages from PDF...</div>';
+
+            extractedPageItems.forEach(it => URL.revokeObjectURL(it.url));
+            extractedPageItems = [];
+
+            const mime = document.getElementById('pdfExtractFormat').value;
+            const scale = parseFloat(document.getElementById('pdfExtractScale').value) || 2.0;
+            let ext = 'jpg';
+            if (mime === 'image/png') ext = 'png';
+            if (mime === 'image/webp') ext = 'webp';
+
+            const numPages = pdfExtractDoc.numPages;
+
+            for (let p = 1; p <= numPages; p++) {
+                const page = await pdfExtractDoc.getPage(p);
+                const viewport = page.getViewport({ scale: scale });
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(viewport.width);
+                canvas.height = Math.round(viewport.height);
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                const blob = await canvasToBlobAsync(canvas, mime, 0.92);
+                const url = URL.createObjectURL(blob);
+                extractedPageItems.push({
+                    pageNum: p,
+                    blob: blob,
+                    url: url,
+                    width: canvas.width,
+                    height: canvas.height,
+                    ext: ext,
+                    mime: mime
+                });
+            }
+
+            grid.innerHTML = '';
+            extractedPageItems.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm flex flex-col justify-between';
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-2.5">
+                            <span class="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">Page ${item.pageNum}</span>
+                            <span class="text-xs font-semibold text-slate-500">${formatFileSize(item.blob.size)} • ${item.width}×${item.height}px</span>
+                        </div>
+                        <div class="bg-checkerboard rounded-xl p-2 border border-slate-100 dark:border-slate-800 mb-3 flex items-center justify-center h-56 overflow-hidden">
+                            <img src="${item.url}" alt="Page ${item.pageNum}" class="max-h-full max-w-full object-contain rounded shadow-sm">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="downloadSingleExtractedPage(${idx})" class="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center justify-center space-x-1">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                            <span>Download .${item.ext.toUpperCase()}</span>
+                        </button>
+                        <button type="button" onclick="sendSinglePageToResizer(${idx})" class="py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-center space-x-1">
+                            <i data-lucide="sliders" class="w-3.5 h-3.5 text-indigo-500"></i>
+                            <span>Resize KB</span>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            lucide.createIcons();
+            showToast(`Extracted ${numPages} page${numPages > 1 ? 's' : ''} as HD images!`);
+        }
+
+        function downloadSingleExtractedPage(index) {
+            const item = extractedPageItems[index];
+            if (!item) return;
+            const a = document.createElement('a');
+            a.href = item.url;
+            a.download = `${pdfExtractFileName}-page-${item.pageNum}.${item.ext}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        async function downloadAllExtractedPdfImagesZip() {
+            if (extractedPageItems.length === 0) return;
+            const zip = new JSZip();
+            extractedPageItems.forEach(item => {
+                zip.file(`${pdfExtractFileName}-page-${item.pageNum}.${item.ext}`, item.blob);
+            });
+            showToast('Creating ZIP archive of all PDF pages...');
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${pdfExtractFileName}-${extractedPageItems.length}-images.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Downloaded all PDF pages as ZIP!');
+        }
+
+        function sendSinglePageToResizer(index) {
+            const item = extractedPageItems[index];
+            if (!item) return;
+            const file = new File([item.blob], `${pdfExtractFileName}-page-${item.pageNum}.${item.ext}`, { type: item.mime });
+            switchMainTool('images');
+            handleMultipleUploadedFiles([file]);
+        }
+
+        function sendExtractedPagesToBatchResizer() {
+            if (extractedPageItems.length === 0) return;
+            const files = extractedPageItems.map(item =>
+                new File([item.blob], `${pdfExtractFileName}-page-${item.pageNum}.${item.ext}`, { type: item.mime })
+            );
+            switchMainTool('images');
+            handleMultipleUploadedFiles(files);
+        }
+
+        async function generateSamplePdfForExtraction() {
+            await generateSamplePdfForCompression();
+            if (currentPdfCompressFile) {
+                handlePdfForExtraction(currentPdfCompressFile);
+            }
+        }
+    </script>
+</body>
+</html>
